@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edirnekapı</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+<link rel="stylesheet" href="/_ds/broadsheet/styles.css">
+<style>
+/* Broadsheet tokenlarının üstüne yalnızca 1c yerleşimi.
+   Kutu, çerçeve, kart yok: hiyerarşi seriften ve boşluktan geliyor. */
+
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--color-bg); color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+.tabaka { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
+
+/* — künye — */
+.kunye {
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-divider);
+  padding: var(--space-4) var(--space-4) var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-6);
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.marka { display: flex; align-items: center; gap: 10px; }
+.marka .mim {
+  width: 24px; height: 24px; background: var(--color-text); color: var(--color-bg);
+  display: grid; place-items: center; font-weight: 600; font-size: 12px; line-height: 1;
+}
+.marka .ad { font-weight: 600; font-size: 15.5px; line-height: 1; }
+
+.kunye-baslik {
+  font-size: 10.5px; line-height: 1; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--color-neutral-600); margin-bottom: 12px;
+}
+.kunye-grup { display: flex; flex-direction: column; gap: 13px; }
+.ajan {
+  display: flex; align-items: baseline; gap: 9px; width: 100%;
+  font-family: var(--font-body); font-size: 13.5px; line-height: 1.3;
+  background: none; border: 0; padding: 3px 0; cursor: pointer; text-align: left;
+  color: var(--color-text);
+}
+.ajan:hover { color: var(--color-accent-700); }
+.ajan .nokta { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.ajan .sayi { margin-left: auto; color: var(--color-neutral-600); font-size: 12px; }
+.n-mavi { background: var(--color-accent); }
+.n-sari { background: var(--color-process-yellow); }
+
+.bugun { display: flex; flex-direction: column; gap: 11px; font-size: 13px; line-height: 1.4; color: var(--color-neutral-800); }
+.bugun .sa { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; font-weight: 600; }
+.bugun .gecti { color: var(--color-neutral-500); }
+
+.kunye-alt {
+  margin-top: auto; padding-top: var(--space-3);
+  border-top: 1px solid var(--color-divider);
+  font-size: 12.5px; line-height: 1.5; font-style: italic; color: var(--color-neutral-600);
+}
+.kunye-alt .defter { display: block; margin-top: 10px; font-style: normal; }
+
+/* — konuşma — */
+.sutun { display: flex; flex-direction: column; min-height: 100vh; min-width: 0; }
+.akis { flex: 1; padding: var(--space-6) var(--space-8) var(--space-3); max-width: 78ch; }
+
+.zaman-etiketi {
+  font-size: 11px; line-height: 1; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--color-neutral-600); margin-bottom: 22px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+
+.gun-cumlesi { margin: 0 0 20px; font-size: 21px; line-height: 1.5; letter-spacing: -.005em; text-wrap: pretty; }
+.katip { margin: 0 0 24px; font-size: 16px; line-height: 1.62; color: var(--color-neutral-800); text-wrap: pretty; white-space: pre-wrap; }
+.katip:last-child { margin-bottom: 0; }
+.ben {
+  margin: 0 0 18px auto; max-width: 62%; width: fit-content;
+  background: var(--color-surface); padding: 13px 16px;
+  font-size: 15px; line-height: 1.55; white-space: pre-wrap;
+}
+.dusunuyor { color: var(--color-neutral-600); font-style: italic; }
+
+/* — onay bloğu — */
+.onaylar {
+  border-top: 1px solid var(--color-divider);
+  border-bottom: 1px solid var(--color-divider);
+  padding: 18px 0; margin-bottom: 22px;
+}
+.onaylar-baslik {
+  font-size: 10.5px; line-height: 1; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--color-accent-2-700); margin-bottom: 14px;
+}
+.onay-satir {
+  display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center;
+}
+.onay-satir + .onay-satir {
+  padding-top: 14px; margin-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent);
+}
+.onay-metin { font-size: 15px; line-height: 1.5; }
+.onay-metin .kaynak { color: var(--color-neutral-600); }
+.onay-metin .acil { color: var(--color-accent-2-700); }
+.onay-dugmeler { display: flex; gap: 6px; }
+
+/* — besteci — */
+.besteci { padding: var(--space-3) var(--space-8) var(--space-4); border-top: 1px solid var(--color-divider); }
+.besteci-ic { display: flex; align-items: center; gap: 12px; background: var(--color-surface); padding: 8px 8px 8px 14px; }
+.besteci input {
+  flex: 1; border: 0; background: transparent; outline: none;
+  font-family: var(--font-body); font-size: 15px; color: var(--color-text);
+}
+.besteci input::placeholder { color: var(--color-neutral-500); font-style: italic; }
+.kapali-not { margin: 10px 0 0; font-size: 12px; color: var(--color-neutral-600); }
+
+/* — defter — */
+.defter-ust { display: flex; align-items: baseline; gap: 16px; margin-bottom: var(--space-6); }
+.defter-ust h1 { margin: 0; font-size: 28px; line-height: 1.1; font-weight: 600; }
+.geri { background: none; border: 0; padding: 0; cursor: pointer; color: var(--color-accent-700); font-family: var(--font-body); font-size: 14px; }
+.geri:hover { color: var(--color-accent-600); }
+
+.proje { padding: var(--space-4) 0; border-top: 1px solid var(--color-divider); }
+.proje:first-of-type { border-top: 0; }
+.proje-ust { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.proje-ad { font-size: 19px; font-weight: 600; line-height: 1.2; background: none; border: 0; padding: 0; cursor: pointer; font-family: var(--font-heading); color: var(--color-text); text-align: left; }
+.proje-ad:hover { color: var(--color-accent-700); }
+.proje-ozet { margin: 8px 0 12px; font-size: 15px; line-height: 1.6; color: var(--color-neutral-800); max-width: 68ch; }
+.serit { display: flex; align-items: flex-end; gap: 3px; height: 22px; max-width: 240px; }
+.serit i { flex: 1; background: var(--color-neutral-300); min-height: 2px; display: block; }
+.serit i.son { background: var(--color-process-yellow); }
+
+.rozet { font-size: 12px; color: var(--color-neutral-600); white-space: nowrap; }
+.rozet.uyari { color: var(--color-accent-2-700); }
+
+.cizelge { margin-top: var(--space-4); }
+.ay { font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--color-neutral-600); margin: var(--space-4) 0 var(--space-2); }
+.olay { padding: 9px 0 9px 18px; position: relative; }
+.olay::before {
+  content: ""; position: absolute; left: 0; top: 16px;
+  width: 7px; height: 7px; border-radius: 50%; background: var(--color-neutral-400);
+}
+.olay.kt::before { background: var(--color-text); width: 9px; height: 9px; left: -1px; }
+.olay.blokaj::before { background: var(--color-accent-2-500); }
+.olay.cozum::before { background: var(--color-accent); }
+.olay.bekleyen { opacity: .62; }
+.olay.bekleyen::before { background: transparent; border: 1px dashed var(--color-neutral-500); }
+.olay-baslik { font-size: 15px; line-height: 1.45; }
+.olay.kt .olay-baslik { font-weight: 600; }
+.olay-meta { margin-top: 3px; font-size: 13px; line-height: 1.5; color: var(--color-neutral-700); }
+.olay-meta .kaynak { color: var(--color-accent-700); }
+.olay-kararlar { display: flex; gap: 7px; margin-top: 8px; }
+
+.etiketler { display: flex; flex-wrap: wrap; gap: 8px; margin-top: var(--space-3); }
+.etiket { background: none; border: 0; cursor: pointer; font-family: var(--font-body); font-size: 13px; color: var(--color-neutral-600); padding: 2px 0; }
+.etiket:hover { color: var(--color-text); }
+.etiket.etkin { color: var(--color-accent-700); font-weight: 600; }
+
+.liste { display: flex; flex-direction: column; }
+.liste-satir { padding: 13px 0; border-top: 1px solid var(--color-divider); display: flex; gap: 16px; align-items: baseline; }
+.liste-satir:first-child { border-top: 0; }
+.liste-satir .govde { flex: 1; min-width: 0; }
+.liste-satir p { margin: 0; font-size: 15px; line-height: 1.5; }
+.liste-satir .alt { margin-top: 3px; font-size: 13px; color: var(--color-neutral-700); }
+.bos { color: var(--color-neutral-600); font-size: 14px; }
+.vurgu { color: var(--color-accent-2-700); }
+
+.hata {
+  margin-bottom: var(--space-4); padding: 12px 16px; font-size: 14px;
+  background: var(--color-accent-2-100); color: var(--color-accent-2-800);
+}
+
+/* — dialog — */
+/* Tasarım sisteminin .dialog-backdrop{display:grid} kuralı sınıf seçicisi olduğu
+   için tarayıcının [hidden] varsayılanını eziyor; kapalıyken gizli kalması için
+   burada açıkça geri alınıyor. */
+.dialog-backdrop[hidden] { display: none !important; }
+.dialog.genis { width: min(680px, 100%); }
+.dialog pre {
+  margin: 0; max-height: 52vh; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  font-family: var(--font-body); font-size: 14.5px; line-height: 1.65;
+  background: var(--color-bg); padding: var(--space-3);
+}
+.dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* — mobil — */
+@media (max-width: 760px) {
+  .tabaka { grid-template-columns: 1fr; }
+  .kunye {
+    position: static; height: auto; border-right: 0;
+    border-bottom: 1px solid var(--color-divider);
+    flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+  }
+  .kunye .gizle-mobil { display: none; }
+  .kunye-alt { margin: 0; padding: 0; border: 0; }
+  .akis { padding: var(--space-4) var(--space-4) var(--space-2); }
+  .besteci { padding: var(--space-3) var(--space-4) var(--space-4); }
+  .onay-satir { grid-template-columns: 1fr; gap: 10px; }
+  .onay-dugmeler .btn { flex: 1; min-height: 44px; }
+  .besteci .btn { min-height: 44px; }
+  .ben { max-width: 84%; }
+}
+</style>
+</head>
+<body>
+
+<div class="tabaka">
+  <aside class="kunye" id="kunye"></aside>
+  <main class="sutun" id="sutun"></main>
+</div>
+
+<div class="dialog-backdrop" id="ortu" hidden>
+  <div class="dialog genis" id="modal" role="dialog" aria-modal="true"></div>
+</div>
+
+<script src="/panel.js"></script>
+</body>
+</html>

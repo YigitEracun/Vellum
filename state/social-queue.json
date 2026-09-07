@@ -1,0 +1,36 @@
+{
+  "guncelleme": "2026-08-25T08:00:00+03:00",
+  "elenen_spam": 1,
+  "konusmalar": [
+    {
+      "platform": "instagram",
+      "id": "9931",
+      "kisi": "@marka_isbirligi",
+      "son_mesaj_zamani": "2026-08-24T17:00:00+03:00",
+      "pencere_kapanis": "2026-08-25T17:00:00+03:00",
+      "onem": "yuksek",
+      "ozet": "Ürün işbirliği teklifi, bütçe aralığı soruyor.",
+      "proje": null,
+      "proje_onerisi": "marka-isbirligi",
+      "taslak": "state/taslaklar/ig-9931.md",
+      "durum": "onay_bekliyor"
+    },
+    {
+      "platform": "instagram",
+      "id": "9932",
+      "kisi": "@takipci_hesap",
+      "son_mesaj_zamani": "2026-08-23T08:00:00+03:00",
+      "pencere_kapanis": "2026-08-24T08:00:00+03:00",
+      "onem": "dusuk",
+      "ozet": "İçerik için teşekkür mesajı, cevap zorunlu değil.",
+      "proje": null,
+      "proje_onerisi": null,
+      "taslak": null,
+      "durum": "pencere_kapandi"
+    }
+  ],
+  "notlar": [
+    "@kazan_hemen_2026 spam olarak elendi.",
+    "@takipci_hesap için 24 saatlik cevap penceresi kapandı; API ile serbest metin gönderilemez."
+  ]
+}

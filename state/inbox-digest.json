@@ -1,0 +1,93 @@
+{
+  "guncelleme": "2026-08-25T08:00:00+03:00",
+  "toplam_okunmamis": 61,
+  "degerlendirilen": 4,
+  "maddeler": [
+    {
+      "id": "18f2a",
+      "gonderen": "Ayşe Yılmaz <ayse@tedarikfirma.com>",
+      "konu": "Sözleşme revizyonu — imza bekliyor",
+      "ham_skor": 140,
+      "skor": 100,
+      "sinyaller": [
+        "taban 30",
+        "doğrudan sana +20",
+        "son tarih var +25",
+        "sözleşme/hukuki +30",
+        "sıra sende +20",
+        "doğrudan soru +15",
+        "tavan 100"
+      ],
+      "kategori": "aksiyon",
+      "ozet": "Revize sözleşmeyi cuma 17:00'a kadar imzalı istiyor. Fiyat maddesi değişmiş.",
+      "aksiyon": "sozlesme_rev3.pdf içindeki fiyat maddesini kontrol et ve imzala",
+      "son_tarih": "2026-08-28T17:00:00+03:00",
+      "proje": "tedarikci-anlasmasi",
+      "taslak": "state/taslaklar/mail-18f2a.md",
+      "durum": "onay_bekliyor"
+    },
+    {
+      "id": "18f2c",
+      "gonderen": "Muhasebe <muhasebe@ornek.com>",
+      "konu": "Ağustos faturaları",
+      "ham_skor": 105,
+      "skor": 100,
+      "sinyaller": [
+        "taban 30",
+        "doğrudan sana +20",
+        "son tarih var +25",
+        "para/fatura +30",
+        "tavan 100"
+      ],
+      "kategori": "aksiyon",
+      "ozet": "Ağustos faturaları onay bekliyor, son tarih ay sonu.",
+      "aksiyon": "agustos_faturalar.xlsx dosyasını onayla",
+      "son_tarih": "2026-08-31T23:59:00+03:00",
+      "proje": null,
+      "taslak": null,
+      "durum": "aksiyon_bekliyor"
+    },
+    {
+      "id": "18f2b",
+      "gonderen": "Mert Kaya <mert@tasarimstudyo.com>",
+      "konu": "Site tasarımı — geri bildirim bekliyoruz",
+      "ham_skor": 55,
+      "skor": 55,
+      "sinyaller": [
+        "taban 30",
+        "doğrudan sana +20",
+        "CC var -15",
+        "sıra sende +20"
+      ],
+      "kategori": "bilgi",
+      "ozet": "İkinci tur tasarımlara geri bildirim bekliyor, süreç onlarda durmuş.",
+      "aksiyon": null,
+      "son_tarih": null,
+      "proje": "web-sitesi-yenileme",
+      "taslak": null,
+      "durum": "beklemede"
+    },
+    {
+      "id": "18f2d",
+      "gonderen": "Teknoloji Bülteni <bulten@haberler.com>",
+      "konu": "Bu haftanın öne çıkanları",
+      "ham_skor": -20,
+      "skor": 0,
+      "sinyaller": [
+        "taban 30",
+        "bülten/pazarlama -50",
+        "taban 0"
+      ],
+      "kategori": "gurultu",
+      "ozet": "Haftalık teknoloji bülteni.",
+      "aksiyon": null,
+      "son_tarih": null,
+      "proje": null,
+      "taslak": null,
+      "durum": "yok"
+    }
+  ],
+  "notlar": [
+    "Siralama ham_skor uzerinden yapilir; gosterilen skor 0-100 araligina kirpilir."
+  ]
+}

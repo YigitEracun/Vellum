@@ -1,0 +1,6 @@
+secrets/
+state/raw/
+*.token.json
+__pycache__/
+.venv/
+.env

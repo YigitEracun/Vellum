@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/broadsheet-a9e2caa1-a1a6-43d7-826c-24625abeee61/styles.css">
+<script src="_ds/broadsheet-a9e2caa1-a1a6-43d7-826c-24625abeee61/_ds_bundle.js"></script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+<style>
+body{margin:0;background:#dedbd7;font-family:"Source Serif 4",Georgia,serif;color:#201e1d}
+a{color:#006786;text-decoration:none}a:hover{color:#1186ac}
+.dv-turn{padding:52px 56px 44px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:4px 7px;background:#201e1d;color:#fff;text-decoration:none}
+.dv-tname{font:600 15px/1.2 "Source Serif 4",serif}
+.dv-sub{margin:10px 0 0;max-width:62ch;font:400 13.5px/1.65 "Source Serif 4",serif;color:#605d5d}
+.dv-opts{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start;margin-top:34px}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:11px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(32,30,29,.1);text-decoration:none;color:#201e1d}
+.dv-olabel{display:flex;align-items:baseline;gap:9px;font:400 12.5px/1.4 "Source Serif 4",serif;color:#605d5d;max-width:70ch}
+.dv-card{background:#f3f2f2;box-shadow:0 16px 44px rgba(32,30,29,.2);overflow:hidden}
+.dv-opt:target .dv-oid{background:#006786;color:#fff}
+.dv-next{margin:34px 0 0;font:12.5px/1.7 "Source Serif 4",serif;color:#605d5d}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Edirnekapı — üç ana ekran yönü</span></div>
+<p class="dv-sub">Üç ajan (Posta · Mesaj · Ajanda) ama tek bir varlık. Yönler tam olarak bu noktada ayrışıyor: bütünlük <b>sayfada</b> mı kurulacak, <b>tezgâhta</b> mı, yoksa <b>sesin kendisinde</b> mi? Onay modeli her üçünde aynı: ajan önerir, siz onaylarsınız.</p>
+
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a><span><b>Sabah Baskısı</b> — gün, bir gazete ön sayfası olarak basılır. Manşet = günün en kritik işi; kolonlar = üç ajanın nüshası. Bütünlük, tek bir dizgide olmaktan gelir.</span></div>
+<div class="dv-card" style="width:1240px">
+  <div style="padding:26px 40px 0 40px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;font:400 11px/1 'Source Serif 4',serif;letter-spacing:.14em;text-transform:uppercase;color:#7d7979">
+      <span>Nüsha No. 412</span><span>Pazartesi, 7 Eylül 2026</span><span>Sabah 07:40 baskısı</span>
+    </div>
+    <div style="height:4px;background:#201e1d;margin-top:10px"></div>
+    <h1 style="margin:14px 0 6px;font:600 62px/.95 'Source Serif 4',serif;letter-spacing:-.02em">Edirnekapı</h1>
+    <div style="height:1px;background:#201e1d"></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;font:400 12.5px/1 'Source Serif 4',serif;color:#444141">
+      <span style="font-style:italic">Üç ajan, tek kâtip</span>
+      <span style="display:flex;gap:22px"><span>Posta <b>4</b> önemli</span><span>Mesaj <b>7</b> yeni</span><span>Ajanda <b>3</b> randevu</span><span style="color:#aa0b56">Onay bekleyen <b>3</b></span></span>
+    </div>
+    <div style="height:3px;background:#201e1d"></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1.55fr 1fr 1fr;gap:0;padding:0 40px 34px">
+    <div style="padding:26px 34px 0 0">
+      <div style="font:400 10.5px/1 'Source Serif 4',serif;letter-spacing:.16em;text-transform:uppercase;color:#aa0b56;margin-bottom:12px">Bugünün manşeti</div>
+      <h2 style="margin:0 0 12px;font:600 34px/1.12 'Source Serif 4',serif;letter-spacing:-.01em;text-wrap:pretty">Kayalar Holding sözleşmesi bugün 17:00’de imzaya kapanıyor</h2>
+      <p style="margin:0 0 14px;font:400 15px/1.62 'Source Serif 4',serif;color:#444141;text-wrap:pretty">Hukuk ekibi 06:12’de revize maddeleri gönderdi. Değişen tek madde ödeme takvimi: 3 taksit → 2 taksit. Ali Rıza Bey saat 11:00’deki toplantıda onayınızı bekliyor.</p>
+      <div style="display:flex;gap:8px;margin-bottom:22px">
+        <button class="btn btn-primary" style="font-family:'Source Serif 4',serif">Taslak cevabı gör</button>
+        <button class="btn btn-secondary" style="font-family:'Source Serif 4',serif">Sözleşmeyi aç</button>
+      </div>
+      <div style="height:1px;background:rgba(32,30,29,.18);margin-bottom:20px"></div>
+
+      <div style="font:400 10.5px/1 'Source Serif 4',serif;letter-spacing:.16em;text-transform:uppercase;color:#7d7979;margin-bottom:14px">Bundan önce yapılması gerekenler</div>
+      <div style="display:flex;flex-direction:column;gap:0">
+        <div style="display:grid;grid-template-columns:26px 1fr auto;gap:12px;align-items:baseline;padding:11px 0;border-top:1px solid rgba(32,30,29,.12)">
+          <span style="font:600 13px/1 ui-monospace,Menlo,monospace;color:#aa0b56">01</span>
+          <span style="font:400 14.5px/1.45 'Source Serif 4',serif">Revize ödeme takvimini muhasebeye teyit ettir <i style="color:#7d7979">— 11:00 toplantısından önce</i></span>
+          <span style="font:400 12px/1 'Source Serif 4',serif;color:#7d7979">2 dk</span>
+        </div>
+        <div style="display:grid;grid-template-columns:26px 1fr auto;gap:12px;align-items:baseline;padding:11px 0;border-top:1px solid rgba(32,30,29,.12)">
+          <span style="font:600 13px/1 ui-monospace,Menlo,monospace;color:#7d7979">02</span>
+          <span style="font:400 14.5px/1.45 'Source Serif 4',serif">Nisan sunumunun 6. slaytını güncelle <i style="color:#7d7979">— Selin’in notu doğrultusunda</i></span>
+          <span style="font:400 12px/1 'Source Serif 4',serif;color:#7d7979">15 dk</span>
+        </div>
+        <div style="display:grid;grid-template-columns:26px 1fr auto;gap:12px;align-items:baseline;padding:11px 0;border-top:1px solid rgba(32,30,29,.12);border-bottom:1px solid rgba(32,30,29,.12)">
+          <span style="font:600 13px/1 ui-monospace,Menlo,monospace;color:#7d7979">03</span>
+          <span style="font:400 14.5px/1.45 'Source Serif 4',serif">14:30 diş randevusuna 20 dk yol payı bırak <i style="color:#7d7979">— trafik şu an yoğun</i></span>
+          <span style="font:400 12px/1 'Source Serif 4',serif;color:#7d7979">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:26px 26px 0 26px;border-left:1px solid rgba(32,30,29,.18)">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
+        <span style="font:600 15px/1 'Source Serif 4',serif">Posta</span>
+        <span class="tag tag-accent" style="font-family:'Source Serif 4',serif">4 / 128</span>
+      </div>
+      <div style="padding:0 0 14px;border-bottom:1px solid rgba(32,30,29,.12);margin-bottom:14px">
+        <div style="font:400 11px/1 'Source Serif 4',serif;letter-spacing:.1em;text-transform:uppercase;color:#aa0b56;margin-bottom:5px">Acil</div>
+        <div style="font:600 15px/1.3 'Source Serif 4',serif;margin-bottom:4px">Ali Rıza Kayalar</div>
+        <p style="margin:0;font:400 13.5px/1.55 'Source Serif 4',serif;color:#444141">Ödeme takvimi 2 taksite indi, teyit istiyor. <b>Taslak cevap hazır.</b></p>
+      </div>
+      <div style="padding:0 0 14px;border-bottom:1px solid rgba(32,30,29,.12);margin-bottom:14px">
+        <div style="font:600 15px/1.3 'Source Serif 4',serif;margin-bottom:4px">Vakıfbank — Kurumsal</div>
+        <p style="margin:0;font:400 13.5px/1.55 'Source Serif 4',serif;color:#444141">Limit artırım başvurunuz sonuçlandı; imza için şube randevusu gerekiyor.</p>
+      </div>
+      <div style="padding:0 0 14px;border-bottom:1px solid rgba(32,30,29,.12);margin-bottom:14px">
+        <div style="font:600 15px/1.3 'Source Serif 4',serif;margin-bottom:4px">Selin Aydemir</div>
+        <p style="margin:0;font:400 13.5px/1.55 'Source Serif 4',serif;color:#444141">Nisan sunumuna 3 not bıraktı, en önemlisi 6. slayt.</p>
+      </div>
+      <p style="margin:0;font:400 12.5px/1.5 'Source Serif 4',serif;color:#7d7979;font-style:italic">124 e-posta bülten ve bildirim olarak arşive alındı.</p>
+    </div>
+
+    <div style="padding:26px 0 0 26px;border-left:1px solid rgba(32,30,29,.18)">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
+        <span style="font:600 15px/1 'Source Serif 4',serif">Ajanda</span>
+        <span class="tag tag-neutral" style="font-family:'Source Serif 4',serif">3 randevu</span>
+      </div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:10px 14px;align-items:baseline;margin-bottom:18px">
+        <span style="font:600 14px/1.3 ui-monospace,Menlo,monospace;color:#006786">11:00</span>
+        <span><b style="font:600 14.5px/1.3 'Source Serif 4',serif">Kayalar — imza öncesi</b><br><span style="font:400 13px/1.5 'Source Serif 4',serif;color:#605d5d">3 kişi · Görüntülü · Hazırlık notu hazır</span></span>
+        <span style="font:600 14px/1.3 ui-monospace,Menlo,monospace;color:#605d5d">14:30</span>
+        <span><b style="font:600 14.5px/1.3 'Source Serif 4',serif">Diş hekimi</b><br><span style="font:400 13px/1.5 'Source Serif 4',serif;color:#605d5d">Nişantaşı · +20 dk yol</span></span>
+        <span style="font:600 14px/1.3 ui-monospace,Menlo,monospace;color:#605d5d">18:00</span>
+        <span><b style="font:600 14.5px/1.3 'Source Serif 4',serif">Ekip haftalık</b><br><span style="font:400 13px/1.5 'Source Serif 4',serif;color:#605d5d">Gündem 4 madde · özet tutulacak</span></span>
+      </div>
+      <div style="height:1px;background:rgba(32,30,29,.18);margin-bottom:16px"></div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
+        <span style="font:600 15px/1 'Source Serif 4',serif">Mesaj</span>
+        <span class="tag tag-accent-2" style="font-family:'Source Serif 4',serif">2 onay</span>
+      </div>
+      <div style="padding-bottom:12px;border-bottom:1px solid rgba(32,30,29,.12);margin-bottom:12px">
+        <div style="font:600 14px/1.3 'Source Serif 4',serif">Instagram · @tuncerdesign</div>
+        <p style="margin:3px 0 0;font:400 13px/1.5 'Source Serif 4',serif;color:#444141">İş birliği teklifi. Taslak: “Teşekkürler, detayları maille alalım.”</p>
+      </div>
+      <div>
+        <div style="font:600 14px/1.3 'Source Serif 4',serif">WhatsApp · Yasin (kardeş)</div>
+        <p style="margin:3px 0 0;font:400 13px/1.5 'Source Serif 4',serif;color:#444141">Cumartesi için soruyor. Ajanda o gün boş.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 40px;background:#eae9e9;border-top:1px solid rgba(32,30,29,.18)">
+    <span style="font:400 13px/1 'Source Serif 4',serif;color:#605d5d;font-style:italic">Edirnekapı’ya bir şey söyleyin — “akşam baskısını 18:30’a al”</span>
+    <span style="display:flex;gap:8px"><button class="btn btn-ghost" style="font-family:'Source Serif 4',serif">Aktivite</button><button class="btn btn-secondary" style="font-family:'Source Serif 4',serif">Onay kuyruğu · 3</button></span>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a><span><b>Tezgâh</b> — üç ajanın kendi kolonu, ama üstte tek bir ağız: kâtibin gün cümlesi ve onay kuyruğu. Kolonlar iş yerini, üst şerit varlığı taşır.</span></div>
+<div class="dv-card" style="width:1240px">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid rgba(32,30,29,.18)">
+    <span style="display:flex;align-items:center;gap:14px">
+      <span style="width:26px;height:26px;background:#201e1d;color:#f3f2f2;display:grid;place-items:center;font:600 13px/1 'Source Serif 4',serif">E</span>
+      <span style="font:600 17px/1 'Source Serif 4',serif;letter-spacing:-.01em">Edirnekapı</span>
+      <span style="font:400 12.5px/1 'Source Serif 4',serif;color:#7d7979">tezgâh</span>
+    </span>
+    <span style="display:flex;align-items:center;gap:20px;font:400 13px/1 'Source Serif 4',serif;color:#605d5d">
+      <span>Ajanda</span><span>Aktivite</span><span>Ayarlar</span>
+      <button class="btn btn-primary" style="font-family:'Source Serif 4',serif">Onay kuyruğu · 3</button>
+    </span>
+  </div>
+
+  <div style="padding:28px 32px 24px;border-bottom:1px solid rgba(32,30,29,.18)">
+    <div style="display:flex;gap:34px;align-items:flex-start">
+      <p style="margin:0;flex:1;font:400 22px/1.42 'Source Serif 4',serif;letter-spacing:-.005em;text-wrap:pretty">Günün tek düğümü <b>Kayalar sözleşmesi</b>: 17:00’de imzaya kapanıyor, tek değişen madde ödeme takvimi. Bunun dışında gün sakin — üç randevu, iki bekleyen mesaj.</p>
+      <div style="flex:none;width:260px;padding-left:30px;border-left:1px solid rgba(32,30,29,.18)">
+        <div style="font:400 10.5px/1 'Source Serif 4',serif;letter-spacing:.16em;text-transform:uppercase;color:#7d7979;margin-bottom:10px">Kâtibin durumu</div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font:400 13px/1.4 'Source Serif 4',serif;color:#444141">
+          <span style="width:7px;height:7px;border-radius:50%;background:#0088b0;align-self:center"></span><span>Posta — 07:38’de tarandı</span>
+          <span style="width:7px;height:7px;border-radius:50%;background:#0088b0;align-self:center"></span><span>Mesaj — canlı dinliyor</span>
+          <span style="width:7px;height:7px;border-radius:50%;background:#edbb00;align-self:center"></span><span>Ajanda — 2 çakışma şüphesi</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr">
+    <div style="padding:24px 26px 30px">
+      <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:18px">
+        <span style="font:600 19px/1 'Source Serif 4',serif">Posta</span>
+        <span style="font:400 12px/1 'Source Serif 4',serif;color:#7d7979">4 önemli · 124 arşiv</span>
+      </div>
+      <div style="background:#eae9e9;padding:16px;margin-bottom:12px;border-left:2px solid #d6006c">
+        <div style="font:400 10.5px/1 'Source Serif 4',serif;letter-spacing:.12em;text-transform:uppercase;color:#aa0b56;margin-bottom:7px">Onay bekliyor</div>
+        <div style="font:600 15px/1.3 'Source Serif 4',serif;margin-bottom:5px">Ali Rıza Kayalar → taslak cevap</div>
+        <p style="margin:0 0 12px;font:400 13.5px/1.55 'Source Serif 4',serif;color:#444141">“Revize takvimi onaylıyorum, 11:00’de detaylandıralım.”</p>
+        <span style="display:flex;gap:7px"><button class="btn btn-primary" style="font-family:'Source Serif 4',serif">Gönder</button><button class="btn btn-ghost" style="font-family:'Source Serif 4',serif">Düzenle</button></span>
+      </div>
+      <div style="padding:13px 0;border-top:1px solid rgba(32,30,29,.12)">
+        <div style="font:600 14.5px/1.3 'Source Serif 4',serif">Vakıfbank — Kurumsal</div>
+        <p style="margin:3px 0 0;font:400 13px/1.5 'Source Serif 4',serif;color:#444141">Limit artırımı onaylandı · şube randevusu gerekli</p>
+      </div>
+      <div style="padding:13px 0;border-top:1px solid rgba(32,30,29,.12)">
+        <div style="font:600 14.5px/1.3 'Source Serif 4',serif">Selin Aydemir</div>
+        <p style="margin:3px 0 0;font:400 13px/1.5 'Source Serif 4',serif;color:#444141">Sunum notları · 6. slayt kritik</p>
+      </div>
+      <div style="padding:13px 0;border-top:1px solid rgba(32,30,29,.12)">
+        <div style="font:600 14.5px/1.3 'Source Serif 4',serif">Bilgi İşlem</div>
+        <p style="margin:3px 0 0;font:400 13px/1.5 'Source Serif 4',serif;color:#444141">Cuma 22:00 bakım penceresi</p>
+      </div>
+    </div>
+
+    <div style="padding:24px 26px 30px;border-left:1px solid rgba(32,30,29,.18)">
+      <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:18px">
+        <span style="font:600 19px/1 'Source Serif 4',serif">Mesaj</span>
+        <span style="font:400 12px/1 'Source Serif 4',serif;color:#7d7979">Instagram · WhatsApp</span>
+      </div>
+      <div style="background:#eae9e9;padding:16px;margin-bottom:12px;border-left:2px solid #d6006c">
+        <div style="font:400 10.5px/1 'Source Serif 4',serif;letter-spacing:.12em;text-transform:uppercase;color:#aa0b56;margin-bottom:7px">Onay bekliyor</div>
+        <div style="font:600 15px/1.3 'Source Serif 4',serif;margin-bottom:5px">@tuncerdesign → taslak cevap</div>
+        <p style="margin:0 0 12px;font:400 13.5px/1.55 'Source Serif 4',serif;color:#444141">“Teşekkürler, detayları maille konuşalım — adresi bırakıyorum.”</p>
+        <span style="display:flex;gap:7px"><button class="btn btn-primary" style="font-family:'Source Serif 4',serif">Gönder</button><button class="btn btn-ghost" style="font-family:'Source Serif 4',serif">Düzenle</button></span>
+      </div>
+      <div style="padding:13px 0;border-top:1px solid rgba(32,30,29,.12)">
+        <div style="display:flex;justify-content:space-between"><span style="font:600 14.5px/1.3 'Source Serif 4',serif">Yasin</span><span style="font:400 12px/1 'Source Serif 4',serif;color:#7d7979">WhatsApp</span></div>
+        <p style="margin:3px 0 0;font:400 13px/1.5 'Source Serif 4',serif;color:#444141">Cumartesi buluşma · ajanda boş, teklif hazır</p>
+      </div>
+      <div style="padding:13px 0;border-top:1px solid rgba(32,30,29,.12)">
+        <div style="display:flex;justify-content:space-between"><span style="font:600 14.5px/1.3 'Source Serif 4',serif">@merve.kaya</span><span style="font:400 12px/1 'Source Serif 4',serif;color:#7d7979">Instagram</span></div>
+        <p style="margin:3px 0 0;font:400 13px/1.5 'Source Serif 4',serif;color:#444141">Podcast daveti · takvimde 3 uygun aralık var</p>
+      </div>
+      <div style="padding:13px 0;border-top:1px solid rgba(32,30,29,.12)">
+        <p style="margin:0;font:400 13px/1.55 'Source Serif 4',serif;color:#7d7979;font-style:italic">5 mesaj “ilgi gerektirmez” olarak işaretlendi (spam, otomatik yanıt).</p>
+      </div>
+    </div>
+
+    <div style="padding:24px 26px 30px;border-left:1px solid rgba(32,30,29,.18)">
+      <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:18px">
+        <span style="font:600 19px/1 'Source Serif 4',serif">Ajanda</span>
+        <span style="font:400 12px/1 'Source Serif 4',serif;color:#7d7979">bugün · 3</span>
+      </div>
+      <div style="background:#eae9e9;padding:16px;margin-bottom:12px;border-left:2px solid #0088b0">
+        <div style="font:400 10.5px/1 'Source Serif 4',serif;letter-spacing:.12em;text-transform:uppercase;color:#006786;margin-bottom:7px">Hazırlık gerekli</div>
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:5px"><span style="font:600 15px/1 ui-monospace,Menlo,monospace">11:00</span><span style="font:600 15px/1.3 'Source Serif 4',serif">Kayalar — imza öncesi</span></div>
+        <p style="margin:0 0 12px;font:400 13.5px/1.55 'Source Serif 4',serif;color:#444141">Konu: ödeme takvimi. Öncesinde muhasebe teyidi gerekiyor.</p>
+        <button class="btn btn-secondary" style="font-family:'Source Serif 4',serif">Hazırlık notunu aç</button>
+      </div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:12px;padding:13px 0;border-top:1px solid rgba(32,30,29,.12)">
+        <span style="font:600 14px/1.3 ui-monospace,Menlo,monospace;color:#605d5d">14:30</span>
+        <span><b style="font:600 14.5px/1.3 'Source Serif 4',serif">Diş hekimi</b><br><span style="font:400 13px/1.5 'Source Serif 4',serif;color:#605d5d">Nişantaşı · yol payı eklendi</span></span>
+      </div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:12px;padding:13px 0;border-top:1px solid rgba(32,30,29,.12)">
+        <span style="font:600 14px/1.3 ui-monospace,Menlo,monospace;color:#605d5d">18:00</span>
+        <span><b style="font:600 14.5px/1.3 'Source Serif 4',serif">Ekip haftalık</b><br><span style="font:400 13px/1.5 'Source Serif 4',serif;color:#605d5d">Özet ve karar kaydı tutulacak</span></span>
+      </div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:12px;padding:13px 0;border-top:1px solid rgba(32,30,29,.12);border-bottom:1px solid rgba(32,30,29,.12)">
+        <span style="font:600 14px/1.3 ui-monospace,Menlo,monospace;color:#aa0b56">?</span>
+        <span><b style="font:600 14.5px/1.3 'Source Serif 4',serif">Çakışma şüphesi</b><br><span style="font:400 13px/1.5 'Source Serif 4',serif;color:#605d5d">Yarın 09:30 — iki davet aynı saatte</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a><span><b>Tek Ağız</b> — ajan yok, sadece kâtip var. Brifing konuşma olarak gelir, onaylar sohbetin içinde satır satır verilir. Solda ince bir künye ajanların hâlâ orada olduğunu söyler. Mobil eşi yanında.</span></div>
+<div style="display:flex;gap:22px;align-items:flex-start">
+<div class="dv-card" style="width:900px">
+  <div style="display:grid;grid-template-columns:212px 1fr;min-height:730px">
+    <div style="padding:22px 20px;background:#eae9e9;border-right:1px solid rgba(32,30,29,.18)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:26px">
+        <span style="width:24px;height:24px;background:#201e1d;color:#f3f2f2;display:grid;place-items:center;font:600 12px/1 'Source Serif 4',serif">E</span>
+        <span style="font:600 15.5px/1 'Source Serif 4',serif">Edirnekapı</span>
+      </div>
+      <div style="font:400 10.5px/1 'Source Serif 4',serif;letter-spacing:.16em;text-transform:uppercase;color:#7d7979;margin-bottom:12px">Künye</div>
+      <div style="display:flex;flex-direction:column;gap:13px;margin-bottom:26px">
+        <span style="display:flex;align-items:baseline;gap:9px;font:400 13.5px/1.3 'Source Serif 4',serif"><span style="width:7px;height:7px;border-radius:50%;background:#0088b0"></span>Posta<span style="margin-left:auto;color:#7d7979;font-size:12px">4</span></span>
+        <span style="display:flex;align-items:baseline;gap:9px;font:400 13.5px/1.3 'Source Serif 4',serif"><span style="width:7px;height:7px;border-radius:50%;background:#0088b0"></span>Mesaj<span style="margin-left:auto;color:#7d7979;font-size:12px">7</span></span>
+        <span style="display:flex;align-items:baseline;gap:9px;font:400 13.5px/1.3 'Source Serif 4',serif"><span style="width:7px;height:7px;border-radius:50%;background:#edbb00"></span>Ajanda<span style="margin-left:auto;color:#7d7979;font-size:12px">3</span></span>
+      </div>
+      <div style="height:1px;background:rgba(32,30,29,.18);margin-bottom:20px"></div>
+      <div style="font:400 10.5px/1 'Source Serif 4',serif;letter-spacing:.16em;text-transform:uppercase;color:#7d7979;margin-bottom:12px">Bugün</div>
+      <div style="display:flex;flex-direction:column;gap:11px;font:400 13px/1.4 'Source Serif 4',serif;color:#444141">
+        <span><b style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px">11:00</b> Kayalar imza öncesi</span>
+        <span><b style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px">14:30</b> Diş hekimi</span>
+        <span><b style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px">18:00</b> Ekip haftalık</span>
+      </div>
+      <div style="margin-top:26px;padding-top:18px;border-top:1px solid rgba(32,30,29,.18);font:400 12.5px/1.5 'Source Serif 4',serif;color:#7d7979;font-style:italic">Kâtip son 12 saatte 139 kayıt okudu, 3’ünü size getirdi.</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column">
+      <div style="padding:26px 34px 8px;flex:1">
+        <div style="font:400 11px/1 'Source Serif 4',serif;letter-spacing:.14em;text-transform:uppercase;color:#7d7979;margin-bottom:22px">Pazartesi 07:40</div>
+
+        <p style="margin:0 0 20px;font:400 21px/1.5 'Source Serif 4',serif;letter-spacing:-.005em;text-wrap:pretty">Günaydın. Gün <b>tek bir işin</b> etrafında dönüyor: Kayalar sözleşmesi 17:00’de imzaya kapanıyor. Hukuk revizeyi gece gönderdi, değişen tek madde ödeme takvimi — 3 taksit yerine 2.</p>
+        <p style="margin:0 0 24px;font:400 16px/1.62 'Source Serif 4',serif;color:#444141;text-wrap:pretty">11:00 toplantısından önce muhasebeden teyit almanız lâzım; onun dışında gün sakin. Diş randevunuza yol payı ekledim, akşam ekip toplantısının özetini ben tutacağım.</p>
+
+        <div style="border-top:1px solid rgba(32,30,29,.18);border-bottom:1px solid rgba(32,30,29,.18);padding:18px 0;margin-bottom:22px">
+          <div style="font:400 10.5px/1 'Source Serif 4',serif;letter-spacing:.16em;text-transform:uppercase;color:#aa0b56;margin-bottom:14px">Onayınızı bekleyen 3 şey</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center">
+              <span style="font:400 15px/1.5 'Source Serif 4',serif">Ali Rıza Bey’e cevap: <i>“Revize takvimi onaylıyorum, 11:00’de detaylandıralım.”</i></span>
+              <span style="display:flex;gap:6px"><button class="btn btn-primary" style="font-family:'Source Serif 4',serif">Onayla</button><button class="btn btn-ghost" style="font-family:'Source Serif 4',serif">Değiştir</button></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding-top:14px;border-top:1px solid rgba(32,30,29,.1)">
+              <span style="font:400 15px/1.5 'Source Serif 4',serif">@tuncerdesign iş birliği teklifine kibar ret + mail yönlendirmesi</span>
+              <span style="display:flex;gap:6px"><button class="btn btn-primary" style="font-family:'Source Serif 4',serif">Onayla</button><button class="btn btn-ghost" style="font-family:'Source Serif 4',serif">Değiştir</button></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding-top:14px;border-top:1px solid rgba(32,30,29,.1)">
+              <span style="font:400 15px/1.5 'Source Serif 4',serif">Yasin’le cumartesi 13:00 — ajandaya kaydedeyim mi?</span>
+              <span style="display:flex;gap:6px"><button class="btn btn-primary" style="font-family:'Source Serif 4',serif">Onayla</button><button class="btn btn-ghost" style="font-family:'Source Serif 4',serif">Değiştir</button></span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;margin-bottom:18px">
+          <p style="margin:0;max-width:62%;background:#eae9e9;padding:13px 16px;font:400 15px/1.55 'Source Serif 4',serif">Yarın 09:30’daki çakışmayı da sen çöz, hangisi önemliyse onu bırak.</p>
+        </div>
+        <p style="margin:0;font:400 16px/1.62 'Source Serif 4',serif;color:#444141;text-wrap:pretty">Tamam. Yatırımcı görüşmesini bıraktım, iç değerlendirmeyi 15:00’e taşıdım ve iki tarafa da bildirdim — <a href="#1c">kaydı aktiviteye yazdım</a>.</p>
+      </div>
+      <div style="padding:16px 34px 22px;border-top:1px solid rgba(32,30,29,.18)">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:#eae9e9">
+          <span style="flex:1;font:400 15px/1 'Source Serif 4',serif;color:#9b9797;font-style:italic">Edirnekapı’ya yazın…</span>
+          <button class="btn btn-primary" style="font-family:'Source Serif 4',serif">Söyle</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="dv-card" style="width:300px">
+  <div style="display:flex;flex-direction:column;min-height:730px">
+    <div style="padding:14px 18px 0;display:flex;justify-content:space-between;font:400 11.5px/1 ui-monospace,Menlo,monospace;color:#7d7979"><span>07:41</span><span>▮▮▮</span></div>
+    <div style="padding:16px 18px 12px;border-bottom:1px solid rgba(32,30,29,.18)">
+      <div style="display:flex;align-items:center;gap:9px"><span style="width:20px;height:20px;background:#201e1d;color:#f3f2f2;display:grid;place-items:center;font:600 11px/1 'Source Serif 4',serif">E</span><span style="font:600 15px/1 'Source Serif 4',serif">Edirnekapı</span></div>
+    </div>
+    <div style="padding:18px 18px 0;flex:1">
+      <p style="margin:0 0 14px;font:400 17px/1.45 'Source Serif 4',serif;text-wrap:pretty">Günaydın. Gün <b>tek işin</b> etrafında: Kayalar sözleşmesi 17:00’de kapanıyor.</p>
+      <p style="margin:0 0 18px;font:400 14px/1.6 'Source Serif 4',serif;color:#444141">11:00’den önce muhasebe teyidi gerek. Gerisi sakin.</p>
+      <div style="border-top:1px solid rgba(32,30,29,.18);padding-top:14px">
+        <div style="font:400 10px/1 'Source Serif 4',serif;letter-spacing:.14em;text-transform:uppercase;color:#aa0b56;margin-bottom:12px">3 onay</div>
+        <div style="margin-bottom:14px">
+          <p style="margin:0 0 9px;font:400 14px/1.5 'Source Serif 4',serif">Ali Rıza Bey’e cevap taslağı</p>
+          <span style="display:flex;gap:7px"><button class="btn btn-primary btn-block" style="font-family:'Source Serif 4',serif;min-height:44px">Onayla</button><button class="btn btn-secondary" style="font-family:'Source Serif 4',serif;min-height:44px">Gör</button></span>
+        </div>
+        <div style="padding-top:14px;border-top:1px solid rgba(32,30,29,.1)">
+          <p style="margin:0 0 9px;font:400 14px/1.5 'Source Serif 4',serif">@tuncerdesign — kibar ret</p>
+          <span style="display:flex;gap:7px"><button class="btn btn-primary btn-block" style="font-family:'Source Serif 4',serif;min-height:44px">Onayla</button><button class="btn btn-secondary" style="font-family:'Source Serif 4',serif;min-height:44px">Gör</button></span>
+        </div>
+      </div>
+    </div>
+    <div style="padding:12px 18px 20px;border-top:1px solid rgba(32,30,29,.18);display:flex;align-items:center;gap:10px">
+      <span style="flex:1;padding:12px 12px;background:#eae9e9;font:400 14px/1 'Source Serif 4',serif;color:#9b9797;font-style:italic">Yazın…</span>
+      <span style="width:44px;height:44px;background:#201e1d;color:#f3f2f2;display:grid;place-items:center;font:600 13px/1 'Source Serif 4',serif">↑</span>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Sıradaki adım: “<a class="dv-oid" href="#1a">1a</a> yönünde devam, kalan 8 ekranı da çiz” · “<a class="dv-oid" href="#1b">1b</a> ama üst şerit <a class="dv-oid" href="#1c">1c</a>’deki gün cümlesi olsun” · “<a class="dv-oid" href="#1c">1c</a>’yi mobil öncelikli aç”</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400,&quot;height&quot;:900}}"></script>
+</body>
+</html>

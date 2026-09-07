@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(./**)",
+      "Write(./state/**)",
+      "Write(./projects/**)",
+      "Write(./config/**)",
+      "Bash(python scripts/*.py:*)"
+    ],
+    "deny": [
+      "Read(./secrets/**)"
+    ]
+  }
+}

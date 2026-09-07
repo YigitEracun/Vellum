@@ -1,0 +1,28 @@
+{
+  "ozet": "İlk tedarikçi üç hatırlatmaya rağmen fiyat vermedi, alternatif firmaya geçildi. Şu an revize teklifin karşılaştırılması ve sözleşme imzası bekleniyor.",
+  "ozet_guncelleme": "2026-08-25T08:00:00+03:00",
+  "sonraki_adim": "İki firmanın revize fiyat listelerini karşılaştır",
+  "acik_blokajlar": 0,
+  "son_hareket": "2026-08-24T09:00:00+03:00",
+  "acik_gun": 42,
+  "olay_sayisi": 12,
+  "etiketler": [
+    "fiyat",
+    "hukuk",
+    "lojistik"
+  ],
+  "aktivite_12h": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    3,
+    2,
+    2,
+    2,
+    0,
+    2
+  ]
+}
