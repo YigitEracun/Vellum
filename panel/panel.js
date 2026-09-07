@@ -1,4 +1,4 @@
-// Edirnekapı — 1c "Tek Ağız".
+// Vellum — 1c "Tek Ağız".
 // Arayüz bir gösterge tablosu değil, bir konuşma. Ajanlar görünmez; künye
 // onların orada olduğunu söyler. Gösterge tablosu Defter görünümünde durur.
 
@@ -147,7 +147,7 @@ function cizKunye() {
   const etkinlikler = (D.ajanda && D.ajanda.etkinlikler) || [];
   const onemliPosta = mailler.filter(m => ham(m) >= 40).length;
 
-  let s = '<div class="marka"><span class="mim">E</span><span class="ad">Edirnekapı</span></div>';
+  let s = '<div class="marka"><span class="mim">V</span><span class="ad">Vellum</span></div>';
 
   s += '<div class="gizle-mobil"><div class="kunye-baslik">Künye</div><div class="kunye-grup">' +
     ajanSatiri('posta', 'n-mavi', 'Posta', onemliPosta) +
@@ -171,7 +171,7 @@ function cizKunye() {
   const okunan = (D.mail && D.mail.toplam_okunmamis || 0) +
     konusmalar.length + (D.sosyal && D.sosyal.elenen_spam || 0);
   const getirilen = acilMailler().length + bekleyenTaslaklar().length;
-  s += '<div class="kunye-alt">Kâtip son taramada ' + okunan + ' kayıt okudu, ' +
+  s += '<div class="kunye-alt">Vellum son taramada ' + okunan + ' kayıt okudu, ' +
     getirilen + '’ini size getirdi.' +
     '<button class="geri defter" onclick="defterAc(\'projeler\')">Defteri aç →</button></div>';
 
@@ -203,7 +203,7 @@ function cizKonusma() {
     s += brifingiCiz(D.bugunun_brifingi);
   } else {
     s += '<p class="gun-cumlesi">' + selam + '. Bugün için henüz tarama yapılmadı.</p>' +
-      '<p class="katip">Postayı, mesajları ve ajandayı taramamı istersen yukarıdaki ' +
+      '<p class="ses">Postayı, mesajları ve ajandayı taramamı istersen yukarıdaki ' +
       '“şimdi tara”ya bas — dört ajan çalışır, günün özetini buraya yazarım.</p>';
   }
 
@@ -212,16 +212,16 @@ function cizKonusma() {
   sohbetGecmisi.forEach(t => {
     s += t.rol === 'kullanici'
       ? '<p class="ben">' + kacir(t.metin) + '</p>'
-      : '<p class="katip">' + kacir(t.metin) + '</p>';
+      : '<p class="ses">' + kacir(t.metin) + '</p>';
   });
   if (bekleyen) {
-    s += '<p class="katip dusunuyor">Düşünüyor… ' + gecenSaniye + ' sn</p>';
+    s += '<p class="ses dusunuyor">Düşünüyor… ' + gecenSaniye + ' sn</p>';
   }
 
   s += '</div>';
 
   s += '<div class="besteci"><div class="besteci-ic">' +
-    '<input type="text" id="soru" placeholder="Edirnekapı’ya yazın…"' +
+    '<input type="text" id="soru" placeholder="Vellum’a yazın…"' +
     (bekleyen ? ' disabled' : '') + ' onkeydown="if(event.key===\'Enter\')sor()">' +
     '<button class="btn btn-primary" onclick="sor()"' + (bekleyen ? ' disabled' : '') +
     '>Söyle</button></div>';
@@ -249,7 +249,7 @@ function brifingiCiz(metin) {
   if (!ilk) ilk = satirlar[0] || '';
 
   return '<p class="gun-cumlesi">' + kacir(ilk) + '</p>' +
-    (govde.length ? '<p class="katip">' + kacir(govde.join('\n')) + '</p>' : '');
+    (govde.length ? '<p class="ses">' + kacir(govde.join('\n')) + '</p>' : '');
 }
 
 function onaylariCiz() {

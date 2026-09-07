@@ -378,7 +378,7 @@ boşluktan gelir.
 
 ```
 ┌──────────────┬───────────────────────────────────────────┐
-│ E Edirnekapı │  PAZARTESİ 07:40           şimdi tara     │
+│ V Vellum     │  PAZARTESİ 07:40           şimdi tara     │
 │              │                                           │
 │ KÜNYE        │  Günaydın. Gün tek bir işin etrafında     │
 │ ● Posta   4  │  dönüyor: Kayalar sözleşmesi 17:00'de…    │
@@ -390,8 +390,8 @@ boşluktan gelir.
 │ 14:30 Diş    │  ───────────────────────────────────────  │
 │ 18:00 Ekip   │                        siz yazdınız ▸     │
 │              │  kâtibin cevabı…                          │
-│ Kâtip 139    │                                           │
-│ kayıt okudu  │  [ Edirnekapı'ya yazın…        Söyle ]    │
+│ Vellum 139   │                                           │
+│ kayıt okudu  │  [ Vellum'a yazın…            Söyle ]    │
 │ Defteri aç → │                                           │
 └──────────────┴───────────────────────────────────────────┘
 ```
@@ -405,7 +405,7 @@ satıra sığmıyorsa kırpılır; `Değiştir` tam metni dialogda açar. Onay s
 kâtibin cevabı olarak düşer.
 
 **Künye** sol kolonda: üç ajanın sayıları (Posta/Mesaj camgöbeği, Ajanda proses sarısı),
-bugünün saatleri, ve "Kâtip son taramada N kayıt okudu, M'ini size getirdi" cümlesi.
+bugünün saatleri, ve "Vellum son taramada N kayıt okudu, M'ini size getirdi" cümlesi.
 Ajanlar görünmez ama varlıkları burada duyulur.
 
 **Defter** — gösterge tablosu buraya taşındı. Künyeden veya "Defteri aç" ile girilir,

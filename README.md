@@ -85,7 +85,7 @@ kâtibin günün ilk mesajı olarak gelir; onaylar sohbetin içinde satır satı
 
 ```
 ┌──────────────┬────────────────────────────────────┐
-│ E Edirnekapı │  PAZARTESİ 07:40      şimdi tara   │
+│ V Vellum     │  PAZARTESİ 07:40      şimdi tara   │
 │              │                                    │
 │ KÜNYE        │  Günaydın. Gün tek bir işin        │
 │ ● Posta   4  │  etrafında dönüyor: ...            │
@@ -213,7 +213,8 @@ sıralama daima ham skora göre yapılır — aksi halde 140 puanlık bir sözle
 
 ## Not
 
-Proje **Vellum** adını yeni aldı; arayüzde ve bazı dosyalarda hâlâ önceki çalışma adı
-(*Edirnekapı* / *Kâtip*) geçiyor. İsim değişikliği koda henüz yansıtılmadı.
+Proje önceki çalışma adlarıyla (*Edirnekapı*, *Kâtip*) geliştirildi; tasarım kaynak
+dosyaları (`tasarım/`) hâlâ o adı taşıyor — Claude Design'dan geldikleri hâlleriyle
+duruyorlar.
 
-Ayrıntılı mimari dokümanı: `Edirnekapi - Yapi Dokumani.docx`
+Ayrıntılı mimari dokümanı: `Vellum - Yapi Dokumani.docx`
