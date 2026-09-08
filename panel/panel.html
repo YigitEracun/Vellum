@@ -72,6 +72,62 @@ body {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
 }
 
+/* Posta listesi: her satir tiklanip okunabilir. */
+.liste-satir.okunur { cursor: pointer; }
+.liste-satir.okunur:hover { background: var(--color-accent-100, #e9f8ff); }
+.liste.sonuk { opacity: .62; }
+.ayrac {
+  margin: 20px 0 8px; font-size: 11px; line-height: 1; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--color-neutral-600);
+}
+.mail-kunye { margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--color-divider); }
+.kunye-satir { margin: 0 0 3px; font-size: 13px; line-height: 1.5; color: var(--color-neutral-800); }
+.kunye-satir span {
+  display: inline-block; min-width: 5.4em; color: var(--color-neutral-600);
+  font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+}
+.mail-govde {
+  margin: 0; max-height: 46vh; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  font-family: inherit; font-size: 15px; line-height: 1.6; color: var(--color-neutral-900);
+}
+
+/* Canli izleyicinin yakaladiklari. */
+.bildirim-kutusu { margin: 0 0 22px; padding-left: 14px; border-left: 2px solid var(--color-accent-700, #a21caf); }
+.bildirim-baslik {
+  margin: 0 0 8px; font-size: 11px; line-height: 1; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--color-neutral-700);
+}
+.bildirim { margin: 0 0 5px; font-size: 14px; line-height: 1.55; }
+.bildirim .skor {
+  display: inline-block; min-width: 2.2em; color: var(--color-accent-700);
+  font-variant-numeric: tabular-nums;
+}
+.baglanti {
+  border: 0; background: none; padding: 0; cursor: pointer; font: inherit;
+  color: var(--color-accent-700); text-decoration: underline; text-underline-offset: 2px;
+}
+
+/* Suren tarama: durum sunucudan gelir, her sekmede gorunur. */
+.tarama-canli { margin: 0 0 22px; padding-left: 14px; border-left: 2px solid var(--color-accent-500, #0e7490); }
+.tarama-baslik {
+  margin: 0; font-size: 11px; line-height: 1; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--color-neutral-700);
+}
+.tarama-canli .sure { color: var(--color-accent-700); font-variant-numeric: tabular-nums; }
+.tarama-canli .adimlar { margin-top: 9px; }
+.tarama-canli .adim {
+  display: block; font-size: 14px; line-height: 1.55; color: var(--color-neutral-700);
+}
+.tarama-canli .adim:last-child { color: var(--color-neutral-900); }
+
+/* Brifingin ne zaman uretildigi. Damgasiz gosterilirse sabahtan kalma bir
+   brifing yeni taramanin ciktisi saniliyor. */
+.brifing-damga {
+  font-size: 11px; line-height: 1; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--color-neutral-600); margin: 0 0 10px;
+}
+.brifing-damga .bayat { color: var(--color-accent-700); }
+
 .gun-cumlesi { margin: 0 0 20px; font-size: 21px; line-height: 1.5; letter-spacing: -.005em; text-wrap: pretty; }
 .ses { margin: 0 0 24px; font-size: 16px; line-height: 1.62; color: var(--color-neutral-800); text-wrap: pretty; white-space: pre-wrap; }
 .ses:last-child { margin-bottom: 0; }
@@ -105,7 +161,14 @@ body {
 .onay-dugmeler { display: flex; gap: 6px; }
 
 /* — besteci — */
-.besteci { padding: var(--space-3) var(--space-8) var(--space-4); border-top: 1px solid var(--color-divider); }
+/* Konuşma uzayınca yazma alanı ekrandan kayıyordu. Alta yapışır: sohbet ne
+   kadar uzarsa uzasın kutu hep elin altında kalır. */
+.besteci {
+  position: sticky; bottom: 0; z-index: 5;
+  background: var(--color-bg);
+  padding: var(--space-3) var(--space-8) var(--space-4);
+  border-top: 1px solid var(--color-divider);
+}
 .besteci-ic { display: flex; align-items: center; gap: 12px; background: var(--color-surface); padding: 8px 8px 8px 14px; }
 .besteci input {
   flex: 1; border: 0; background: transparent; outline: none;

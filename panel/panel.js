@@ -199,8 +199,11 @@ function cizKonusma() {
   if (hataMetni) { s += '<div class="hata">' + kacir(hataMetni) + '</div>'; hataMetni = null; }
 
   // Günün cümlesi: brifing varsa konuşmanın açılışı olur.
+  s += taramaCiz();
+  s += bildirimleriCiz();
+
   if (D.bugunun_brifingi) {
-    s += brifingiCiz(D.bugunun_brifingi);
+    s += brifingDamgasi() + brifingiCiz(D.bugunun_brifingi);
   } else {
     s += '<p class="gun-cumlesi">' + selam + '. Bugün için henüz tarama yapılmadı.</p>' +
       '<p class="ses">Postayı, mesajları ve ajandayı taramamı istersen yukarıdaki ' +
@@ -232,6 +235,82 @@ function cizKonusma() {
   s += '</div>';
 
   return s;
+}
+
+// Canlı izleyicinin gün içinde yakaladığı mailler. Kural motoru puanladı, model
+// çalışmadı — özet istendiğinde üretilir, kredi ancak o zaman harcanır.
+function bildirimleriCiz() {
+  const liste = D.bildirimler || [];
+  if (!liste.length) return '';
+  const satirlar = liste.map(b =>
+    '<p class="bildirim">' +
+      '<span class="skor">' + (b.ham_skor || 0) + '</span> ' +
+      '<b>' + kacir(kisalt(b.gonderen, 34)) + '</b> — ' + kacir(b.konu || '') +
+      ' <button class="baglanti" onclick="bildirimOzeti(\'' + kacir(b.id) + '\')">özetle</button>' +
+    '</p>').join('');
+  return '<div class="bildirim-kutusu">' +
+    '<p class="bildirim-baslik">Gün içinde ' + liste.length + ' önemli mail</p>' +
+    satirlar + '</div>';
+}
+
+function kisalt(metin, n) {
+  metin = String(metin || '');
+  return metin.length > n ? metin.slice(0, n - 1) + '…' : metin;
+}
+
+// Özet istemek Çekirdek'e bir soru sormaktır: kredi burada, sizin isteğinizle harcanır.
+function bildirimOzeti(id) {
+  const b = (D.bildirimler || []).find(x => String(x.id) === String(id));
+  if (!b) return;
+  const kutu = document.getElementById('soru');
+  if (kutu) kutu.value = '"' + (b.konu || '') + '" konulu maili özetle ve ne yapmam ' +
+    'gerektiğini söyle (id: ' + b.id + ').';
+  sor();
+}
+
+// Süren taramanın canlı hâli. Durum sunucudan geldiği için sayfa yenilense de,
+// başka bir sekmeden bakılsa da görünür.
+function taramaCiz() {
+  const t = D.tarama;
+  if (!t || !t.suruyor) return '';
+  const gecen = Math.max(0, Math.round((new Date() - new Date(t.baslangic)) / 1000));
+  const adimlar = (t.adimlar || []).map(x => '<span class="adim">' + kacir(x) + '</span>').join('');
+  return '<div class="tarama-canli">' +
+    '<p class="tarama-baslik">Tarama sürüyor — <span class="sure">' + gecen + ' sn</span></p>' +
+    (adimlar ? '<div class="adimlar">' + adimlar + '</div>' : '') +
+    '</div>';
+}
+
+// Tarama sürerken sunucuyu yokla. Tüm paneli saniyede bir çizmek titriyor:
+// sayaç her saniye tek düğümde güncellenir, durum birkaç saniyede bir çekilir.
+let nabiz = null;
+function nabziBaslat() {
+  if (nabiz) return;
+  let sayac = 0;
+  nabiz = setInterval(async () => {
+    // Süre daima başlangıç damgasından hesaplanır; sayfa sonradan açılsa da doğru.
+    const d = document.querySelector('.tarama-canli .sure');
+    if (d && D.tarama && D.tarama.baslangic) {
+      d.textContent = Math.round((new Date() - new Date(D.tarama.baslangic)) / 1000) + ' sn';
+    }
+    if (++sayac % 3) return;                  // 3 saniyede bir sunucuya sor
+    const yeni = await cagir('/api/durum').catch(() => null);
+    if (!yeni) return;
+    const bitti = !yeni.tarama || !yeni.tarama.suruyor;
+    D = yeni;
+    if (bitti) { nabziDurdur(); await yenile(); } else { ciz(); }
+  }, 1000);
+}
+function nabziDurdur() { clearInterval(nabiz); nabiz = null; }
+
+// Brifingin ne zaman üretildiği. Ham veri brifingten yeniyse brifing bayattır:
+// o zamandan beri yeni mail gelmiş ama özet onu görmemiş demektir.
+function brifingDamgasi() {
+  if (!D.brifing_zamani) return '';
+  const bayat = D.ham_cekildi && new Date(D.ham_cekildi) > new Date(D.brifing_zamani);
+  return '<p class="brifing-damga">' + saat(D.brifing_zamani) + ' brifingi' +
+    (bayat ? ' <span class="bayat">· veri ' + saat(D.ham_cekildi) +
+      '\'te tazelendi, bu özet onu görmedi</span>' : '') + '</p>';
 }
 
 // Brifing markdown'ının ilk paragrafı gün cümlesi, gerisi kâtibin sesi.
@@ -375,25 +454,70 @@ function cizelge(p) {
   return s + '</div>';
 }
 
+// Çekilen her mail listelenir — düşük skorlular da. Skor neyin öne çıkacağını
+// belirler, neyin görüneceğini değil: elenen bir maili gözden geçirebilmek
+// skorlamayı düzeltmenin tek yolu.
 function defterPosta() {
   const mailler = ((D.mail && D.mail.maddeler) || []).slice().sort((a, b) => ham(b) - ham(a));
-  const dusuk = mailler.filter(m => ham(m) < 40).length;
-  const gosterilecek = mailler.filter(m => ham(m) >= 40);
-  if (!gosterilecek.length) return '<p class="bos">Öne çıkan mail yok.</p>';
+  if (!mailler.length) return '<p class="bos">Henüz mail çekilmedi.</p>';
 
-  let s = '<div class="liste">';
-  gosterilecek.forEach(m => {
-    s += '<div class="liste-satir"><div class="govde">' +
-      '<p>' + kacir(m.ozet) + '</p>' +
-      '<p class="alt">' + kacir((m.gonderen || '').split('<')[0].trim()) +
-      (m.aksiyon ? ' · ' + kacir(m.aksiyon) : '') +
-      (m.proje ? ' · ' + kacir(m.proje) : '') + '</p></div>' +
-      '<span class="rozet">' + ham(m) + '</span></div>';
-  });
-  s += '</div>';
-  if (dusuk) s += '<p class="bos" style="margin-top:16px">' + dusuk +
-    ' düşük öncelikli mail dokunulmadan bırakıldı.</p>';
+  const onemli = mailler.filter(m => ham(m) >= 40);
+  const dusuk = mailler.filter(m => ham(m) < 40);
+
+  const satir = m =>
+    '<div class="liste-satir okunur" onclick="mailAc(\'' + kacir(String(m.id)) + '\')">' +
+      '<div class="govde">' +
+        '<p>' + kacir(m.ozet || m.konu || '(konusuz)') + '</p>' +
+        '<p class="alt">' + kacir((m.gonderen || '').split('<')[0].trim()) +
+          (m.aksiyon ? ' · ' + kacir(m.aksiyon) : '') +
+          (m.proje ? ' · ' + kacir(m.proje) : '') + '</p>' +
+      '</div><span class="rozet">' + ham(m) + '</span></div>';
+
+  let s = '';
+  if (onemli.length) s += '<div class="liste">' + onemli.map(satir).join('') + '</div>';
+  else s += '<p class="bos">Öne çıkan mail yok.</p>';
+
+  if (dusuk.length) {
+    s += '<p class="ayrac">' + dusuk.length + ' düşük öncelikli mail</p>' +
+      '<div class="liste sonuk">' + dusuk.map(satir).join('') + '</div>';
+  }
   return s;
+}
+
+// Mailin tam gövdesi. Ham veri sunucuda; pencereden düşmüşse arşivden gelir.
+async function mailAc(id) {
+  const r = await cagir('/api/mail/' + encodeURIComponent(id));
+  if (r.hata) {
+    return modalAc('<h3 class="dialog-title">Mail açılamadı</h3>' +
+      '<p class="dialog-body">' + kacir(r.hata) + '</p>' +
+      '<div class="dialog-actions"><button class="btn btn-secondary" onclick="modalKapat()">Kapat</button></div>');
+  }
+  const m = r.mail;
+  const madde = ((D.mail && D.mail.maddeler) || []).find(x => String(x.id) === String(id)) || {};
+  const kunye = [
+    ['Kimden', m.gonderen], ['Kime', (m.alici || []).join(', ')],
+    ['CC', (m.cc || []).join(', ')], ['Tarih', m.tarih ? gunAdi(m.tarih) + ' ' + saat(m.tarih) : ''],
+    ['Ekler', (m.ekler || []).join(', ')],
+    ['Skor', madde.ham_skor != null ? madde.ham_skor + '  ·  ' + (madde.sinyaller || []).join(', ') : ''],
+  ].filter(x => x[1]).map(x =>
+    '<p class="kunye-satir"><span>' + x[0] + '</span>' + kacir(String(x[1])) + '</p>').join('');
+
+  modalAc('<h3 class="dialog-title">' + kacir(m.konu || '(konusuz)') + '</h3>' +
+    '<div class="mail-kunye">' + kunye + '</div>' +
+    '<pre class="mail-govde">' + kacir(m.govde || '(gövde boş)') + '</pre>' +
+    '<div class="dialog-actions">' +
+      '<button class="btn btn-secondary" onclick="modalKapat()">Kapat</button>' +
+      '<button class="btn btn-primary" onclick="modalKapat();mailOzeti(\'' + kacir(String(id)) + '\')">Özetle</button>' +
+    '</div>');
+}
+
+// Özet istemek Çekirdek'e soru sormaktır: kredi burada, sizin isteğinizle harcanır.
+function mailOzeti(id) {
+  const m = ((D.mail && D.mail.maddeler) || []).find(x => String(x.id) === String(id)) || {};
+  const kutu = document.getElementById('soru');
+  if (kutu) kutu.value = '"' + (m.konu || '') + '" konulu maili (id: ' + id +
+    ') özetle ve ne yapmam gerektiğini söyle.';
+  sor();
 }
 
 function defterMesaj() {
@@ -506,7 +630,7 @@ async function sor() {
   bekleyen = true;
   gecenSaniye = 0;
   ciz();
-  odaklan();
+  odaklan(true);   // kullanıcı mesaj gönderdi: konuşmayı takip et
 
   // Tüm paneli saniyede bir çizmek titremeye yol açıyor; yalnız bu düğüm güncellenir.
   const sayac = setInterval(() => {
@@ -528,24 +652,42 @@ async function sor() {
     metin: r.cevap || ('Olmadı: ' + (r.hata || 'bilinmeyen hata'))
   });
   ciz();
-  odaklan();
+  odaklan(true);   // cevap geldi: yeni mesaja in
 }
 
 async function tara() {
   if (taraniyor) return;
   taraniyor = true;
+  // Durumu hemen çek ki "tarama sürüyor" bloğu beklemeden görünsün.
+  cagir('/api/durum').then(d => { if (d) { D = d; ciz(); nabziBaslat(); } });
   ciz();
   const r = await cagir('/api/tarama', {});
   taraniyor = false;
+  nabziDurdur();
   if (r.hata) hataMetni = r.hata;
   await yenile();
 }
 
-function odaklan() {
+// Kullanıcı en altta mı duruyor? Geçmişi okumak için yukarı çıkmışsa onu
+// aşağı sürüklemeyiz; konuşmayı takip ediyorsa yeni mesaja iniriz.
+const DIP_PAYI = 120;   // piksel
+function dipteMi() {
+  const kalan = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+  return kalan <= DIP_PAYI;
+}
+
+function dibeKay(zorla) {
+  if (!zorla && !dipteMi()) return;
+  // Çizim bittikten sonra yüksekliğin oturması için bir kare bekle.
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
+  });
+}
+
+function odaklan(dipYap) {
   const kutu = document.getElementById('soru');
   if (kutu && !bekleyen) kutu.focus();
-  const son = document.querySelector('.akis > :last-child');
-  if (son) son.scrollIntoView({ block: 'nearest' });
+  dibeKay(dipYap);
 }
 
 // -------------------------------------------------------------------- kabuk
@@ -584,12 +726,83 @@ async function taslaklariGetir() {
   if (isler.length) await Promise.all(isler);
 }
 
+// Sohbet sunucuda saklanıyor (state/sohbet.jsonl), tarayıcı belleğinde değil.
+// Sayfa yenilense, sekme değişse de konuşma yerinde kalır. Cevap beklenirken
+// dokunulmaz: o an yerel dizide henüz sunucuya yazılmamış bir tur vardır.
+function sohbetiYukle() {
+  if (bekleyen) return;
+  if (D && Array.isArray(D.sohbet)) sohbetGecmisi = D.sohbet.slice();
+}
+
 async function yenile() {
   D = await cagir('/api/durum');
+  sohbetiYukle();
   ciz();
   await taslaklariGetir();
   ciz();
   odaklan();
+  // Bu sekme taramayı başlatmamış olsa da (başka sekme, sayfa yenilendi)
+  // süren bir tarama varsa takibe al.
+  if (D && D.tarama && D.tarama.suruyor) nabziBaslat();
 }
+
+
+// --------------------------------------------------- arka plan yenilemesi
+
+// Canlı izleyici yeni maili sisteme düşürüyor ama açık duran sayfa bunu
+// göremiyordu; kullanıcı yeni maili görmek için tarama yapmak zorunda kalıyordu.
+// Panel artık sunucuyu kendisi yokluyor. Sunucu yerel, model çağrılmıyor —
+// yoklamanın maliyeti yok.
+const ARKA_PLAN_ARALIGI = 20000;
+
+// Her yoklamada tüm paneli çizmek titretir. Ucuz bir imza karşılaştırılır;
+// `simdi` alanı bilerek dışarıda: her yoklamada değişir, tek başına tetiklememeli.
+function veriImzasi(d) {
+  if (!d) return '';
+  const maddeler = (d.mail && d.mail.maddeler) || [];
+  const enYuksek = maddeler.reduce((a, m) => Math.max(a, ham(m)), 0);
+  return [
+    d.ham_cekildi, d.brifing_zamani, maddeler.length, enYuksek,
+    (d.bildirimler || []).length,
+    (d.sohbet || []).length,
+    ((d.sosyal && d.sosyal.konusmalar) || []).length,
+    ((d.ajanda && d.ajanda.etkinlikler) || []).length,
+    (d.projeler || []).length,
+  ].join('|');
+}
+
+// Kullanıcının elinden iş almayacağız: yazarken, okurken ya da bir işlem
+// beklerken yenileme bir sonraki tura bırakılır.
+function yenilemeUygunMu() {
+  if (bekleyen || taraniyor) return false;
+  if (document.hidden) return false;
+  const ortu = document.getElementById('ortu');
+  if (ortu && !ortu.hidden) return false;            // açık pencere kapanmasın
+  const kutu = document.getElementById('soru');
+  if (kutu && (kutu.value.trim() || document.activeElement === kutu)) return false;
+  return true;
+}
+
+async function arkaPlanYoklamasi() {
+  if (!yenilemeUygunMu()) return;
+  const yeni = await cagir('/api/durum').catch(() => null);
+  if (!yeni) return;
+  if (veriImzasi(yeni) === veriImzasi(D)) { D = yeni; return; }
+
+  const konum = window.scrollY;
+  D = yeni;
+  sohbetiYukle();
+  ciz();
+  await taslaklariGetir();
+  ciz();
+  window.scrollTo(0, konum);   // imleci ve konumu kullanıcıdan habersiz oynatma
+  if (D.tarama && D.tarama.suruyor) nabziBaslat();
+}
+
+setInterval(arkaPlanYoklamasi, ARKA_PLAN_ARALIGI);
+// Sekmeye dönüldüğünde beklemeden tazele.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) arkaPlanYoklamasi();
+});
 
 yenile();

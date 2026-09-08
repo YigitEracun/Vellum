@@ -20,14 +20,17 @@ import io
 import json
 import os
 import sys
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 KOK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PANEL = os.path.dirname(os.path.abspath(__file__))
-if PANEL not in sys.path:
-    sys.path.insert(0, PANEL)
+for _yol in (PANEL, os.path.join(KOK, "scripts")):
+    if _yol not in sys.path:
+        sys.path.insert(0, _yol)
 PORT = 8787
 TZ = timezone(timedelta(hours=3))
 
@@ -148,13 +151,25 @@ def toplu_durum():
     # Brifing artık konuşmanın ilk mesajı; varsa bugünkü kaydı da gönder.
     bugun_ad = datetime.now(TZ).strftime("%Y-%m-%d") + ".md"
     bugun_yol = os.path.join(log_dizin, bugun_ad)
-    bugunun_brifingi = (io.open(bugun_yol, encoding="utf-8").read()
-                        if os.path.exists(bugun_yol) else None)
+    bugunun_brifingi = brifing_zamani = None
+    if os.path.exists(bugun_yol):
+        bugunun_brifingi = io.open(bugun_yol, encoding="utf-8").read()
+        # Dosyanin yazilma ani = brifingin uretildigi an. Damgasiz gosterilirse
+        # sabahtan kalma bir brifing yeni taramanin ciktisi sanilir.
+        brifing_zamani = datetime.fromtimestamp(
+            os.path.getmtime(bugun_yol), TZ).isoformat()
 
     return {
         "simdi": datetime.now(TZ).isoformat(),
         "canli_gonderim": CANLI_GONDERIM,
+        # Ham verinin ne zaman cekildigi: panel "bu brifing ne kadar taze"
+        # sorusunu cevaplayabilsin.
+        "ham_cekildi": (oku_json("state/raw/gmail.json", {}) or {}).get("cekildi"),
         "bugunun_brifingi": bugunun_brifingi,
+        "brifing_zamani": brifing_zamani,
+        "tarama": tarama_durumu(),
+        "bildirimler": bildirimleri_oku(),
+        "sohbet": sohbet_gecmisi(),
         "mail": oku_json("state/inbox-digest.json", {}),
         "sosyal": oku_json("state/social-queue.json", {}),
         "ajanda": oku_json("state/agenda.json", {}),
@@ -241,6 +256,106 @@ def taslak_onayi(govde):
     }
 
 
+def mail_oku(mail_id):
+    """Bir mailin tam gövdesini döner.
+
+    Once son cekilen pencereye, orada yoksa kalici arsive bakar — pencereden
+    dusmus eski bir mail de okunabilsin.
+    """
+    mail_id = str(mail_id)
+    ham = oku_json("state/raw/gmail.json", {}) or {}
+    for m in ham.get("mailler", []):
+        if str(m.get("id")) == mail_id:
+            return {"mail": m}
+    for m in oku_jsonl("state/raw/arsiv.jsonl"):
+        if str(m.get("id")) == mail_id:
+            return {"mail": m}
+    return {"hata": "Bu mail elde yok. Ham veri tazelendiğinde düşmüş olabilir."}
+
+
+def bildirimleri_oku(yalniz_gorulmemis=True):
+    """Canlı izleyicinin düştüğü bildirimleri okur."""
+    yol = os.path.join(KOK, "state", "bildirimler.jsonl")
+    if not os.path.exists(yol):
+        return []
+    kayitlar = []
+    for satir in io.open(yol, encoding="utf-8", errors="replace"):
+        satir = satir.strip()
+        if not satir:
+            continue
+        try:
+            k = json.loads(satir)
+        except ValueError:
+            continue
+        if yalniz_gorulmemis and k.get("goruldu"):
+            continue
+        kayitlar.append(k)
+    kayitlar.sort(key=lambda k: -(k.get("ham_skor") or 0))
+    return kayitlar[:20]
+
+
+def izleyici_baslat():
+    """Canlı izleyiciyi arka planda çalıştırır. Panel kapanınca izleme de durur."""
+    def dongu():
+        try:
+            sys.path.insert(0, os.path.join(KOK, "scripts"))
+            import izleyici
+        except Exception as hata:
+            print("Izleyici baslatilamadi:", hata)
+            return
+        print("Izleyici acik: her %d sn, esik %d" % (izleyici.ARALIK, izleyici.ESIK))
+        while True:
+            try:
+                # IMAP'e aynı anda iki yerden gitmeyelim: tarama sürerken bekle.
+                if _TARAMA_KILIDI.acquire(blocking=False):
+                    try:
+                        sayi, bildirilen = izleyici.tur()
+                    finally:
+                        _TARAMA_KILIDI.release()
+                    if bildirilen:
+                        print("Izleyici: %d onemli mail" % len(bildirilen))
+            except Exception as hata:
+                print("Izleyici turu hatasi (devam ediyor):", hata)
+            time.sleep(izleyici.ARALIK)
+
+    t = threading.Thread(target=dongu, daemon=True)
+    t.start()
+    return t
+
+
+def anlasilir_hata(hata):
+    """API hatalarını düz Türkçeye çevirir.
+
+    Ham `BadRequestError` metni kullanıcıya bir şey anlatmıyor; kredi bitmesini
+    bulmak bu yüzden yarım saat aldı.
+    """
+    metin = str(hata)
+    d = metin.lower()
+    if "credit balance is too low" in d:
+        return ("API krediniz bitmiş, tarama yapılamıyor. "
+                "console.anthropic.com → Plans & Billing'den kredi yükleyin.")
+    if "authentication" in d or "invalid x-api-key" in d or "401" in d:
+        return "API anahtarı geçersiz. .env dosyasındaki ANTHROPIC_API_KEY'i kontrol edin."
+    if "rate limit" in d or "429" in d:
+        return "API hız sınırına takıldık. Birkaç dakika sonra tekrar deneyin."
+    if any(x in d for x in ("connection", "timeout", "getaddrinfo", "ssl")):
+        return "Ağ bağlantısı kurulamadı. İnternet bağlantınızı kontrol edin."
+    if "cikti siniri" in d:
+        return metin   # zaten Türkçe ve açıklayıcı
+    return "%s: %s" % (type(hata).__name__, metin)
+
+
+def tarama_kaydet(kayit):
+    """Her taramanın sonucunu — hata dahil — kalıcı olarak kaydeder."""
+    yol = os.path.join(KOK, "state", "log", "taramalar.jsonl")
+    try:
+        os.makedirs(os.path.dirname(yol), exist_ok=True)
+        with io.open(yol, "a", encoding="utf-8") as f:
+            f.write(json.dumps(kayit, ensure_ascii=False) + "\n")
+    except Exception:
+        pass   # kayıt tutulamadı diye tarama bozulmasın
+
+
 def _beyin():
     """beyin modulunu gec yukler; anthropic kurulu degilse anlasilir hata verir."""
     try:
@@ -252,32 +367,128 @@ def _beyin():
         )
 
 
+SOHBET_DOSYASI = "state/sohbet.jsonl"
+SOHBET_GOSTERILEN = 40   # panele taşınan son tur sayısı
+
+
+def sohbet_gecmisi():
+    """Kayıtlı sohbetin son turlarını döner. Dosya append-only büyür."""
+    turlar = []
+    for k in oku_jsonl(SOHBET_DOSYASI):
+        if k.get("rol") and k.get("metin"):
+            turlar.append({"rol": k["rol"], "metin": k["metin"]})
+    return turlar[-SOHBET_GOSTERILEN:]
+
+
+def sohbet_kaydet(rol, metin):
+    try:
+        ekle_jsonl(SOHBET_DOSYASI, {
+            "t": datetime.now(TZ).isoformat(), "rol": rol, "metin": metin,
+        })
+    except Exception:
+        pass   # kayıt tutulamadı diye sohbet bozulmasın
+
+
 def sohbet(govde):
-    """Soruyu Cekirdek'e iletir (Claude API), cevabi doner."""
+    """Soruyu Cekirdek'e iletir (Claude API), cevabi doner.
+
+    Soru ve cevap diske yazilir: sayfa yenilenince konusma kaybolmamali.
+    """
     soru = (govde.get("soru") or "").strip()
     if not soru:
         return {"hata": "Bos soru."}
     gecmis = govde.get("gecmis") or []
     try:
-        return {"cevap": _beyin().sohbet(soru, gecmis)}
+        cevap = _beyin().sohbet(soru, gecmis)
+        sohbet_kaydet("kullanici", soru)
+        sohbet_kaydet("asistan", cevap)
+        return {"cevap": cevap}
     except RuntimeError as hata:
         return {"hata": str(hata)}
     except Exception as hata:
-        return {"hata": "%s: %s" % (type(hata).__name__, hata)}
+        return {"hata": anlasilir_hata(hata)}
+
+
+def ham_veri_cek(adimlar):
+    """Agent'lar okumadan once ham veriyi tazeler.
+
+    Cekme basarisiz olursa tarama durmaz: agent'lar eldeki son veriyle devam
+    eder. Ag koptu diye brifing tamamen kaybolmamali — ama kullanici verinin
+    bayat oldugunu gormeli, o yuzden hata `adimlar` icinde geri doner.
+    """
+    adimlar.append("Gmail cekiliyor…")
+    try:
+        import gmail_fetch
+        veri = gmail_fetch.cek()
+        gmail_fetch.yaz(veri)
+        yeni, toplam = gmail_fetch.arsivle(veri)
+        adimlar.append("Gmail: %d mail cekildi (arsiv: +%d, toplam %d)."
+                       % (len(veri["mailler"]), yeni, toplam))
+    except SystemExit as hata:       # kimlik bilgisi eksik
+        # Adim listesi tek satirlik; cok satirli kurulum metnini sikistir.
+        adimlar.append("Gmail cekilemedi: %s" % " ".join(str(hata).split()))
+    except Exception as hata:
+        adimlar.append("Gmail cekilemedi (%s: %s) — eldeki son veriyle devam."
+                       % (type(hata).__name__, hata))
+
+
+# Sunucu cok is parcacikli; iki "simdi tara" ayni anda gelebilir. Ikisi de ayni
+# digest dosyalarina yazar ve API kredisi iki kat harcanir. Kilit alinamiyorsa
+# ikinci istek calismaz, suren taramaya yonlendirilir.
+_TARAMA_KILIDI = threading.Lock()
+
+# Taramanin durumu sunucuda tutulur, tarayicinin belleginde degil. Boylece
+# sayfa yenilense ya da baska bir sekmeden bakilsa da taramanin surdugu ve
+# hangi adimda oldugu gorulur.
+_TARAMA_DURUMU = {"suruyor": False, "baslangic": None, "adimlar": [], "bitti": None}
+
+
+def tarama_durumu():
+    d = dict(_TARAMA_DURUMU)
+    d["adimlar"] = list(d["adimlar"])   # cizim sirasinda liste degisebilir
+    return d
 
 
 def tarama(govde):
-    """Dort agent'i calistirip gunluk brifingi uretir ve arsive yazar."""
+    """Ham veriyi tazeler, dort agent'i calistirip brifingi uretir ve arsivler."""
+    if not _TARAMA_KILIDI.acquire(blocking=False):
+        return {"hata": "Bir tarama zaten suruyor. Bitmesini bekleyin — "
+                        "ayni anda iki tarama ayni dosyalara yazar."}
+    baslangic = datetime.now(TZ)
+    _TARAMA_DURUMU.update(suruyor=True, bitti=None, adimlar=[],
+                          baslangic=baslangic.isoformat())
+    sonuc = {}
+    try:
+        sonuc = _tarama(govde)
+        return sonuc
+    finally:
+        bitti = datetime.now(TZ)
+        _TARAMA_DURUMU.update(suruyor=False, bitti=bitti.isoformat())
+        _TARAMA_KILIDI.release()
+        tarama_kaydet({
+            "baslangic": baslangic.isoformat(),
+            "bitti": bitti.isoformat(),
+            "saniye": round((bitti - baslangic).total_seconds(), 1),
+            "adimlar": list(_TARAMA_DURUMU["adimlar"]),
+            "hata": sonuc.get("hata"),
+            "agentlar": sonuc.get("agentlar"),
+            "brifing_uzunlugu": len(sonuc.get("brifing") or ""),
+        })
+
+
+def _tarama(govde):
     try:
         b = _beyin()
     except RuntimeError as hata:
         return {"hata": str(hata)}
 
-    adimlar = []
+    # Adimlar dogrudan paylasilan duruma yazilir; panel surerken okuyabilsin.
+    adimlar = _TARAMA_DURUMU["adimlar"]
+    ham_veri_cek(adimlar)
     try:
         sonuc = b.brief(ilerleme=adimlar.append)
     except Exception as hata:
-        return {"hata": "%s: %s" % (type(hata).__name__, hata), "adimlar": adimlar}
+        return {"hata": anlasilir_hata(hata), "adimlar": adimlar}
 
     brifing = sonuc.get("brifing") or ""
     if brifing:
@@ -355,6 +566,8 @@ class Isleyici(BaseHTTPRequestHandler):
             if metin is None:
                 return self._gonder(404, {"hata": "Taslak yok."})
             return self._gonder(200, {"metin": metin})
+        if yol.startswith("/api/mail/"):
+            return self._gonder(200, mail_oku(yol.rsplit("/", 1)[-1]))
         if yol.startswith("/api/arsiv/"):
             ad = os.path.basename(yol.rsplit("/", 1)[-1])
             tam = os.path.join(KOK, "state", "log", ad)
@@ -380,6 +593,7 @@ class Isleyici(BaseHTTPRequestHandler):
 
 
 def main():
+    izleyici_baslat()
     sunucu = ThreadingHTTPServer(("127.0.0.1", PORT), Isleyici)
     print("Panel hazir:  http://127.0.0.1:%d" % PORT)
     print("Canli gonderim:", "ACIK" if CANLI_GONDERIM else "KAPALI (onaylar yalnizca kaydedilir)")

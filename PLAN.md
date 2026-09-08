@@ -241,8 +241,8 @@ Gönderme yetkisi yalnızca Çekirdek'te. Alt agent'ların gönderim araçların
 | Faz | İçerik | Bağımlılık | Süre |
 |---|---|---|---|
 | **0** | Klasör iskeleti, persona, agent tanımları, state şemaları, sahte veriyle uçtan uca test | yok | 1 oturum |
-| **1** | Gmail: Google Cloud projesi, OAuth desktop client, `gmail.readonly` + `gmail.send`, `gmail_fetch.py`, mail-agent canlı | Google Cloud hesabı | 1 oturum |
-| **2** | Calendar entegrasyonu, hazırlık listesi üretimi, hatırlatmalar | Faz 1 OAuth'u paylaşır | 1 oturum |
+| **1** | Gmail: IMAP + uygulama şifresi, `gmail_fetch.py`, mail-agent canlı veriyle. **Tamam** — OAuth yerine IMAP seçildi: Cloud projesi/onay ekranı gerekmiyor, token 7 günde düşmüyor ve salt okuma protokol seviyesinde garanti. Gönderim bu fazda açılmadı. | Hesapta 2FA | tamam |
+| **2** | Calendar entegrasyonu, hazırlık listesi üretimi, hatırlatmalar | Kendi OAuth'unu kurar (Faz 1 IMAP'e geçtiği için paylaşım yok) | 1 oturum |
 | **3** | Task Scheduler + masaüstü bildirimi + brifing arşivi | Faz 1–2 | kısa |
 | **4** | Onay/gönderim akışı (`/kuyruk`, `/onayla`, `/duzelt`) | Faz 1 | kısa |
 | **5** | Proje hafızası: olay günlüğü, durum türetme, diğer agent'ların olay yazması | Faz 1–2 | 1 oturum |
@@ -434,7 +434,7 @@ taşındı** (`panel/beyin.py`):
 - Yetki sınırı artık kodda: proje kökü dışına çıkılamaz, `secrets/` okunamaz, yazma yalnızca
   `state/`, `projects/`, `config/` altında serbest, `olaylar.jsonl` yalnızca `dosya_ekle` ile
   büyür. Sohbet salt okunur araçlarla çalışır.
-- Model `claude-opus-5`, adaptif düşünme açık. Alt agent'lar `effort: medium` ile çalışır;
+- Model `claude-sonnet-5`, adaptif düşünme açık. Alt agent'lar `effort: medium` ile çalışır;
   Çekirdek harmanlama ve sohbette varsayılan efor kullanılır.
 
 Tek bağımlılık: `pip install anthropic`. API anahtarı `ANTHROPIC_API_KEY` ortam
@@ -489,3 +489,111 @@ WhatsApp (Business API zorunlu, ücretli, onay süreci — Telegram'ın verdiği
 **Güvenlik:** Bot yalnızca senin chat id'ne cevap verir (whitelist). Token `secrets/` altında.
 Sunucu yalnızca localhost'a bind edilir. Gönderim komutlarını bot değil Çekirdek yürütür —
 bot ve panel yalnızca arayüzdür.
+
+---
+
+## 12. Kural motoru — modelin işi neresi (2026-09-08)
+
+İlk canlı tarama ölçümü: `mail-agent` 32 mailin gövdesini tek turda okudu, **104.192 giriş +
+16.000 çıkış token**, süre dakikalar. Oysa gelen kutusundaki 32 mailin 30'u iş ilanı
+bülteniydi. Model, bültenleri okumak için çalıştırılıyordu.
+
+**Karar:** `config/onem-kurallari.md` zaten bir kural tablosu — VIP +40, tarih +25,
+bülten −50. Bunları modele hesaplatmanın hiçbir karşılığı yok. Skorlama `panel/skorlama.py`
+içine, deterministik Python'a taşındı. Model yalnızca eşiği (ham skor 40) geçen maillere
+özet, aksiyon ve taslak yazar.
+
+### 12.1 Bülten tespiti: `List-Unsubscribe`
+
+Toplu gönderim yapan her mail bu başlığı taşır; kesin sinyaldir ve sıfır token harcar.
+Kutudaki 32 mailin 23'ü taşıyordu.
+
+Ama iki tür otomatik mail vardır ve ayrımı önemlidir:
+
+- **Bülten** — `List-Unsubscribe`/`List-Id` taşır. Gerçek bir mülakat daveti abonelikten
+  çıkma bağlantısıyla gelmez, o yüzden bülten hiçbir koşulda "ilerleme" sayılmaz.
+- **İşlem maili** — `noreply@` türü adres. Başvuru sistemleri (ATS) mülakat davetini de
+  böyle gönderir; içeriğine bakılır.
+
+Bu ayrım olmadan, gövdesinde "Interview" geçen bir Glassdoor bülteni 60 puan alıyordu.
+
+### 12.2 İçerik sinyalleri yalnızca size yazılmış maillerde sayılır
+
+Pazarlama metni her zaman tarih ("son 3 gün"), fiyat ("199 TL") ve soru ("kaçırmak ister
+misiniz?") taşır. Bunlar sayılınca toplu gönderim cezasını geri kapatıyor ve bir indirim
+maili "aksiyon" olarak brifingin başına çıkıyordu — ölçtük, çıkıyordu. Toplu gönderimde
+tarih/para/soru hesaplanmaz; VIP'ten geliyorsa ya da başvuru ilerlemesiyse hesaplanır.
+
+### 12.3 İş başvurusu ayrımı
+
+Kullanıcının açık tercihi: başvuru **onayları** ("başvurunuz alındı") önemli değil,
+şirketten gelen **ilerleme** (mülakat, teklif, değerlendirme sonucu) önemli. Ayrım
+gönderene değil konuya bakar — aynı adresten ikisi de gelebilir.
+
+### 12.4 Kullanıcı kimliği koda gömülmez
+
+"Doğrudan sana yazılmış" ve "CC" sinyalleri kullanıcının adresini bilmeyi gerektirir. Adres
+çalışma anında `secrets/.env`'den okunur; çözülemezse bu iki sinyal tahmin edilmez, atlanır.
+Testler uydurma adreslerle yazılır — kimin makinesinde çalıştığından bağımsız geçmeli.
+
+---
+
+## 13. Modele ne gösterildiği (2026-09-08)
+
+Skorlama ucuzladıktan sonra ikinci bir israf kalmıştı: ajana "gövdeleri
+`state/raw/gmail.json` içinde bul" deniyordu. Ajan 100 KB'lık dosyanın tamamını okuyor,
+**tool döngüsünün her turunda o içerik yeniden gönderiliyordu**. Üstüne 19,5 KB'lık digest'i
+baştan yazıyordu — tek başına ~5.000 çıktı tokenı. İki mail özetlemek ~$0,24 tutuyordu.
+
+**Üç karar:**
+
+1. **Ajana yalnızca işleyeceği veri verilir.** `state/ozetlenecek.json` — eşiği geçen
+   maillerin gövdeleriyle birlikte. İki mail için 1,2 KB.
+2. **Ajan büyük dosyayı geri yazmaz.** Özetler küçük bir `state/ozetler.json`'a yazılır,
+   digest'le birleştirmeyi sistem yapar. Model 19 KB'lık dosyayı yeniden yazarken bir alanı
+   bozamaz; çıktı tokenı da 5.000'den ~300'e iner.
+3. **Çekirdek ve `proje-agent` süzülmüş görünüm okur.** `state/brifing-girdisi.json`
+   yalnızca eşiği geçenleri taşır, elenenler tek bir sayıdır. Digest'in tamamı panelin veri
+   kaynağı olarak kalır — kullanıcı elenen maili de görebilmeli.
+
+Ölçülen sonuç: mail özeti başına ~$0,236 → ~$0,005.
+
+**Genel ilke:** bir ajanın okuduğu her dosya, döngünün her turunda yeniden faturalanır.
+Ajanın girdisini dar tutmak, ajanı kısıtlamaktan daha etkilidir.
+
+---
+
+## 14. Canlı izleme (2026-09-08)
+
+Tarama elle başlatılıyordu; gün içinde gelen önemli bir mailden ancak "şimdi tara"ya
+basınca haberdar olunuyordu.
+
+- `imaplib` Python 3.12'de IDLE desteklemiyor (3.13'te eklendi), bu yüzden **60 saniyelik
+  yoklama**. IMAP sorgusu ücretsiz olduğu için maliyeti yok, gecikme en fazla bir dakika.
+- İzleyici **model çağırmaz**: kural motoruyla puanlar, eşiği geçerse bildirir. Gün boyu
+  izleme bedavadır.
+- Yeni mail yalnızca bildirilmez, **sisteme de düşer**: `gmail.json`, `arsiv.jsonl` ve
+  digest güncellenir. Bildirim tek başına yetmez — mail Posta listesinde de görünmeli.
+- Bildirim kendi çizdiğimiz **Broadsheet kartıdır** (`scripts/kart.py`), Windows'un kutusu
+  değil. Ayrı bir süreçte açılır: Tkinter çağrıları tek iş parçacığında kalmak zorunda,
+  sunucunun içinden pencere açmak kırılgan olurdu. Kart çizilemezse Windows bildirimine
+  düşülür; izleyici hiçbir durumda durmaz.
+- UID koruması: kayıtlı UID kutununkinden büyükse geçersiz sayılıp kutunun sonuna hizalanır.
+  Bu, kutu yeniden oluşturulduğunda (UIDVALIDITY değişimi) sistemi sağlam tutar.
+
+---
+
+## 15. Görünürlük (2026-09-08)
+
+Kredi bitmesi gibi apaçık bir hatayı bulmak yarım saat aldı, çünkü hata hiçbir yere
+yazılmıyordu — yalnızca tarayıcıya dönüyordu.
+
+- Her taramanın sonucu (süre, adımlar, ajan çıktıları, hata) `state/log/taramalar.jsonl`.
+- API hataları düz Türkçeye çevrilir: kredi bitti, anahtar geçersiz, hız sınırı, ağ yok.
+- Tarama durumu sunucuda tutulur; panel yoklar. Sayfa yenilense ya da başka sekmeden
+  bakılsa da taramanın sürdüğü ve hangi adımda olduğu görünür.
+- Brifingin üstünde üretim damgası var. Damgasız gösterilen bir brifing, sabahtan kalma
+  olduğu hâlde yeni taramanın çıktısı sanılıyordu — bunu bizzat yaşadık.
+- Panel 20 saniyede bir kendini yoklar. Yazarken, okurken ya da bir işlem beklerken
+  yenileme ertelenir; kullanıcının elinden iş alınmaz.
+- Sohbet `state/sohbet.jsonl` içinde saklanır: sayfa yenilenince konuşma kaybolmaz.

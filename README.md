@@ -6,9 +6,9 @@ cevap taslakları hazırlar ve projelerin geçmişini tutar. **Hiçbir şey onay
 Yerel çalışır, dosya tabanlıdır, Claude API üzerinden düşünür ve tek bir web paneli
 üzerinden kullanılır.
 
-> Durum: geliştirme aşaması. Ajan katmanı, proje hafızası ve panel çalışıyor;
-> Gmail / Takvim / Instagram bağlantıları henüz kurulmadı — sistem şu an sahte veriyle
-> uçtan uca çalışabilir durumda.
+> Durum: geliştirme aşaması. Gmail bağlantısı (IMAP, salt okuma), kural tabanlı skorlama,
+> canlı izleme ve masaüstü bildirimi çalışıyor; Takvim ve Instagram bağlantıları henüz
+> kurulmadı. Gönderim kapalı — onaylar yalnızca kaydedilir.
 
 ---
 
@@ -50,6 +50,28 @@ geçmez. Taslak karşı tarafı oyalamadan bekletir; taahhüdü siz verirsiniz.
 kendisi engeller. Proje kökü dışına çıkılamaz, `secrets/` okunamaz, yazma yalnızca üç
 klasörde serbesttir, olay günlüğünün üzerine yazılamaz.
 
+**Kural işi kurala, yargı işi modele.** Önem skorlaması bir kural tablosudur — VIP +40,
+tarih +25, bülten −50. Bunu modele hesaplatmak hem pahalı hem yavaştı: 32 maili skorlatmak
+tek turda 104.000 giriş tokenıydı ve dakikalar sürüyordu. Skorlama artık Python'da
+(`panel/skorlama.py`); model yalnızca eşiği geçen birkaç maile özet ve taslak yazar.
+
+**Modele az göster.** Bir ajanın okuduğu her dosya, tool döngüsünün her turunda yeniden
+gönderilir. Ajana "gövdeleri `gmail.json` içinde bul" demek, iki mail için 100 KB'lık
+dosyanın birkaç kez faturalanması demekti. Ajan artık yalnızca işleyeceği maillerin
+bulunduğu küçük bir dosya görür ve büyük digest'i geri yazmaz — birleştirmeyi sistem yapar.
+Mail özeti başına maliyet ~$0,24'ten ~$0,005'e indi.
+
+**Bülten ile işlem maili ayrıdır.** `List-Unsubscribe` başlığı taşıyan hiçbir şey mülakat
+daveti sayılmaz; bir davet abonelikten çıkma bağlantısıyla gelmez. Ama `noreply@` adresinden
+gelen bir başvuru sistemi bildirimi sayılabilir. Bu ayrım olmadan, gövdesinde "interview"
+geçen bir iş ilanı bülteni öne çıkıyordu. Aynı sebeple toplu gönderimde tarih/fiyat/soru
+sinyalleri hesaplanmaz: pazarlama metni hepsini taşır ve toplu gönderim cezasını kapatır.
+
+**Kimlik koda gömülmez.** "Doğrudan sana yazılmış" sinyali kullanıcının adresini bilmeyi
+gerektirir; o adres çalışma anında `secrets/.env`'den okunur. Çözülemezse sinyal tahmin
+edilmez, atlanır. Program başka bir hesapla kurulduğunda kendiliğinden o kullanıcıya
+göre çalışır.
+
 ---
 
 ## Mimari
@@ -75,6 +97,21 @@ ilgili projeye düşürür, proje geçmişi kendiliğinden oluşur.
 
 Veri çekme işi ajanlara ait değildir — fetch scriptleri ham veriyi `state/raw/` altına
 bırakır, ajanlar yalnızca onu okur. Bu sayede hiçbir ajanın ağa erişimi yoktur.
+
+Mail tarafında araya bir kat daha girer:
+
+```
+gmail_fetch.py  →  state/raw/gmail.json  →  skorlama.py (kural, modelsiz)
+                                                  ↓
+                                    inbox-digest.json   (panelin gördüğü: hepsi)
+                                    brifing-girdisi.json (modelin gördüğü: eşiği geçenler)
+                                                  ↓
+                                            mail-agent (özet + taslak)
+```
+
+Kural motoru elemeyi yapar, model yalnızca kalanla ilgilenir. Panel elenen maili de
+gösterir — skor neyin öne çıkacağını belirler, neyin görüneceğini değil; elenen bir maili
+görebilmek skorlamayı düzeltmenin tek yoludur.
 
 ---
 
@@ -125,6 +162,32 @@ ANTHROPIC_API_KEY=sk-ant-...
 Anahtar sırayla şuralarda aranır, ilk bulunan kullanılır: ortam değişkeni → `.env` →
 `secrets/.env` → `secrets/api_key.txt`.
 
+### Gmail bağlantısı
+
+Bağlantı IMAP + **Google Uygulama Şifresi** ile kurulur — OAuth, Cloud projesi ve
+onay ekranı yoktur. Hesapta iki adımlı doğrulama açık olmalı; şifreyi
+[myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) üretir.
+
+`secrets/.env` dosyasına yazın:
+
+```
+GMAIL_ADRES=...@gmail.com
+GMAIL_UYGULAMA_SIFRESI=xxxxxxxxxxxxxxxx
+```
+
+Bağlantıyı diske hiçbir şey yazmadan sınamak için:
+
+```bash
+python scripts/gmail_fetch.py --kuru
+```
+
+Kutu IMAP'te `readonly` açılır: okundu bayrağı bile değişmez, gönderim yolu yoktur.
+Her taramada gelen kutusunun son 3 günü, en fazla 50 mail çekilir; gövdeler 2000
+karaktere kırpılır. Okunabilir ve 5 MB altındaki ekler `state/raw/ekler/` altına iner.
+
+Panelden "şimdi tara" dendiğinde bu çekme adımı kendiliğinden çalışır. Çekme başarısız
+olursa tarama durmaz — ajanlar eldeki son veriyle devam eder, hata adım listesinde görünür.
+
 Paneli başlatın:
 
 ```bash
@@ -151,29 +214,45 @@ python scripts/seed_ornek_veri.py
 ├── state/                 ortak hafıza: digest'ler, taslaklar, brifing arşivi
 ├── projects/              proje hafızası: olaylar.jsonl + durum.json
 ├── panel/
-│   ├── sunucu.py          yerel sunucu (yalnızca standart kütüphane)
+│   ├── sunucu.py          yerel sunucu + canlı izleyici (standart kütüphane)
 │   ├── beyin.py           Çekirdek + ajanlar (Claude API, tool use)
+│   ├── skorlama.py        kural motoru — önem skorlaması, modelsiz
 │   ├── panel.html         arayüz yerleşimi
 │   ├── panel.js
 │   └── _ds/broadsheet/    tasarım sistemi
-└── scripts/               veri çekme ve demo üretimi
+└── scripts/
+    ├── gmail_fetch.py      Gmail → state/raw/gmail.json (IMAP, salt okuma)
+    ├── izleyici.py         canlı izleyici: yeni maili yakalar, bildirir
+    ├── kart.py             Broadsheet bildirim kartı (masaüstü pop-up)
+    ├── test_skorlama.py    kural motorunun birim testleri
+    └── seed_*.py           demo verisi
 ```
 
 ---
 
 ## Önem skorlaması
 
-Mail önemi kural tabanlı bir rubrikle hesaplanır (`config/onem-kurallari.md`). Taban 30 puan:
+Mail önemi kural tabanlı bir rubrikle hesaplanır. Rubrik `config/onem-kurallari.md`
+içinde belgelenir, `panel/skorlama.py` içinde uygulanır — **model çağrılmaz**. Taban 30 puan:
 
 | Sinyal | Etki |
 |---|---|
 | Gönderen VIP listesinde | +40 |
+| Gönderen gürültü listesinde | −40 |
 | Doğrudan size yazılmış | +20 |
-| CC / toplu gönderim | −15 |
+| Yalnızca CC'desiniz | −15 |
 | İçinde tarih veya son tarih var | +25 |
 | Para, fatura, sözleşme, hukuki | +30 |
-| Thread'de sıra sizde | +20 |
+| Doğrudan soru var | +15 |
 | Bülten / pazarlama / otomatik | −50 |
+| İş başvurusu **onayı** ("başvurunuz alındı") | −40 |
+| Şirketten **ilerleme** (mülakat, teklif, sonuç) | +45 |
+
+Eşikler: ham skor ≥70 aksiyon, 40–69 bilgi, <40 gürültü. **Eşiğin altındaki mail modele
+hiç gösterilmez** — panelde durur, ama özet için kredi harcanmaz.
+
+Son iki satır kullanıcının açık tercihidir: başvuru onayları önemli değil, şirketten gelen
+ilerleme önemli. Ayrım gönderene değil konuya bakar — aynı adresten ikisi de gelebilir.
 
 Sinyal toplamı 100'ü aşabilir. **Ham toplam saklanır**, gösterilen skor 0–100'e kırpılır,
 sıralama daima ham skora göre yapılır — aksi halde 140 puanlık bir sözleşme maili ile
@@ -186,9 +265,9 @@ sıralama daima ham skora göre yapılır — aksi halde 140 puanlık bir sözle
 | Faz | İçerik | Durum |
 |---|---|---|
 | 0 | İskelet, ajan tanımları, uçtan uca akış | tamam |
-| 1 | Gmail entegrasyonu (OAuth, fetch, canlı gönderim) | bekliyor |
+| 1 | Gmail entegrasyonu (IMAP fetch, salt okuma) | tamam |
 | 2 | Google Takvim entegrasyonu | bekliyor |
-| 3 | Zamanlanmış tarama + bildirim | bekliyor |
+| 3 | Canlı izleme + masaüstü bildirimi | tamam |
 | 4 | Onay ve gönderimin canlıya alınması | bekliyor |
 | 5 | Proje hafızası | tamam |
 | 6 | Telegram botu — panelin uzaktan kolu | bekliyor |
@@ -201,13 +280,23 @@ sıralama daima ham skora göre yapılır — aksi halde 140 puanlık bir sözle
 
 - Instagram DM erişimi Meta App Review onayı gerektirir; ayrıca Meta'nın 24 saat kuralı
   vardır — karşı tarafın son mesajından 24 saat sonra API ile serbest metin gönderilemez.
-- Mail ve mesaj içerikleri özetleme için modele gönderilir. Ham veri diskte kalır;
-  `secrets/`, `state/raw/` ve `.env` versiyon kontrolüne girmez.
-- Her tarama beş API çağrısıdır (dört ajan + harmanlama). Zamanlanmış taramaya geçmeden
-  önce gerçek token kullanımı ölçülmelidir.
+- Yalnızca **eşiği geçen** maillerin içeriği modele gönderilir; gerisi diski hiç terk
+  etmez. Ham veri, digest'ler, taslaklar, bildirimler ve sohbet kaydı versiyon kontrolüne
+  girmez — `.gitignore` bunları kapsar.
+- Tarama, bağlı kaynak ve eşiği geçen mail sayısına göre 2–4 API çağrısıdır. Kaynağı
+  bağlı olmayan ajan hiç çağrılmaz; özetlenecek mail yoksa mail ajanı da çağrılmaz.
+- Canlı izleme **model çağırmaz**: kural motoru puanlar, bildirim düşer. Özet ve taslak
+  yalnızca siz istediğinizde üretilir.
+- Token kullanımı henüz kaydedilmiyor; maliyet ölçümleri dosya boyutlarından hesaplanan
+  tahminlerdir.
 - Taranmış (görüntü) PDF eklerinden metin çıkmaz; sistem bu durumda tahmin yürütmez,
   kullanıcıya bildirir.
 - Karanlık tema yoktur: Broadsheet koyu yüzey tanımlamıyor, tek kağıt teması kullanılıyor.
+- Bildirim kartı Windows Bildirim Merkezi'ne iz bırakmaz — ekran başında değilken kaçırılan
+  kart orada bulunamaz, ama panelde bildirim listesinde durmaya devam eder.
+- Masaüstü kartı Source Serif kuruluysa onu, değilse Georgia'yı kullanır; tarayıcıdaki
+  panel yazıtipini Google Fonts'tan çeker, masaüstü penceresi çekemez.
+- Canlı izleme panel sunucusuyla birlikte çalışır; panel kapanınca izleme de durur.
 
 ---
 

@@ -4,3 +4,18 @@ state/raw/
 __pycache__/
 .venv/
 .env
+
+# Gercek kullanici verisi: gonderen adresleri, mail konulari, brifing metinleri.
+# Demo veriyken izleniyorlardi; canli hesap baglandiktan sonra versiyon
+# kontrolune girmemeli.
+state/bildirimler.jsonl
+state/sohbet.jsonl
+state/ozetler.json
+state/ozetlenecek.json
+state/inbox-digest.json
+state/brifing-girdisi.json
+projects/_oneriler.json
+state/social-queue.json
+state/agenda.json
+state/taslaklar/
+state/log/

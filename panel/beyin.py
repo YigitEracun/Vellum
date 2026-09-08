@@ -21,10 +21,14 @@ from anthropic import beta_tool
 
 KOK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-MODEL = "claude-opus-5"
+MODEL = "claude-sonnet-5"
 # Alt agent'lar sınırlı bir işi yapıyor; Çekirdek harmanlama ve sohbette
 # varsayılan (high) efor ile çalışır.
 AGENT_EFOR = "medium"
+# Bir toplayıcı agent 50 maili tek seferde skorlayıp JSON yazar; düşünme
+# tokenları da bu bütçeden yer. 16k yetmiyor — yetmediğinde agent dosyayı
+# yazamadan kesiliyor ve brifing boş çıkıyordu.
+AGENT_MAX_TOKENS = 64000
 
 # Yazma yalnızca bu klasörlerin altına serbest. secrets/ hiçbir koşulda okunmaz.
 YAZILABILIR = ("state", "projects", "config")
@@ -251,10 +255,16 @@ def _metin(mesaj):
     return "\n".join(b.text for b in mesaj.content if b.type == "text").strip()
 
 
-def calistir(sistem, istek, araclar, efor=None, max_tokens=16000):
+def calistir(sistem, istek, araclar, efor=None, max_tokens=16000,
+             kirpilma_hata=False):
     """Bir tool-use döngüsü çalıştırır, son mesajın metnini döner.
 
     `istek` tek bir metin ya da hazır bir mesaj listesi olabilir.
+
+    `kirpilma_hata`: çıktı sınırına takılan çalıştırma hata saysın mı. Agent'lar
+    için True olmalı — kırpılan bir agent dosyasını yazamadan durur ve elde hiçbir
+    şey kalmaz; bunun sessizce "başarılı" sayılması brifingi boş gösterir.
+    Sohbette False: yarım da olsa cevabı görmek kullanıcının işine yarar.
     """
     mesajlar = istek if isinstance(istek, list) else [
         {"role": "user", "content": istek}
@@ -262,10 +272,18 @@ def calistir(sistem, istek, araclar, efor=None, max_tokens=16000):
     # output_config yalnizca efor verildiginde gonderilir; None gecmek
     # istegi gecersiz kilar.
     ek = {"output_config": {"effort": efor}} if efor else {}
+    # Sistem istemi (agent tanımı + persona + CLAUDE.md) her çağrıda ve tool
+    # döngüsünün her turunda yeniden gönderiliyor. Önbelleğe alınırsa tekrar
+    # okumalar çok daha ucuza gelir; içerik sabit olduğu için önek kararlıdır.
+    sistem_bloklari = [{
+        "type": "text",
+        "text": sistem,
+        "cache_control": {"type": "ephemeral"},
+    }]
     runner = istemci().beta.messages.tool_runner(
         model=MODEL,
         max_tokens=max_tokens,
-        system=sistem,
+        system=sistem_bloklari,
         thinking={"type": "adaptive"},
         tools=araclar,
         messages=mesajlar,
@@ -279,6 +297,14 @@ def calistir(sistem, istek, araclar, efor=None, max_tokens=16000):
     if son.stop_reason == "refusal":
         ayrinti = getattr(son, "stop_details", None)
         return "[istek reddedildi: %s]" % getattr(ayrinti, "category", "bilinmiyor")
+    if son.stop_reason == "max_tokens":
+        if kirpilma_hata:
+            raise RuntimeError(
+                "cikti siniri (%d token) asildi, is yarim kaldi — dosya "
+                "yazilmamis olabilir. Girdiyi kucult ya da max_tokens'i yukselt."
+                % max_tokens
+            )
+        return (_metin(son) + "\n\n[cevap cikti sinirinda kesildi]").strip()
     return _metin(son)
 
 
@@ -317,7 +343,8 @@ def agent_calistir(ad, istek):
         "Yollar proje köküne göredir. Çıktı dosyalarını gerçekten yaz — "
         "sohbet metni üretme, işini bitirince tek cümlelik özet dön."
     )
-    return calistir(sistem, istek, YAZMA_ARACLARI, efor=AGENT_EFOR)
+    return calistir(sistem, istek, YAZMA_ARACLARI, efor=AGENT_EFOR,
+                    max_tokens=AGENT_MAX_TOKENS, kirpilma_hata=True)
 
 
 # --------------------------------------------------------------------- disari
@@ -356,45 +383,157 @@ def sohbet(soru, gecmis=None):
     return calistir(cekirdek_sistemi(), mesajlar, OKUMA_ARACLARI)
 
 
+ESIK = 40   # ham skor: bunun altındaki mail modele hiç gösterilmez
+
+
+def _json_oku(gorece, varsayilan=None):
+    yol = os.path.join(KOK, gorece)
+    if not os.path.exists(yol):
+        return varsayilan
+    try:
+        return json.load(io.open(yol, encoding="utf-8"))
+    except ValueError:
+        return varsayilan
+
+
+def ozetlenecek_yaz(bekleyen):
+    """Modele gidecek mailleri gövdeleriyle birlikte tek küçük dosyaya yazar.
+
+    Ajan `dosya_oku` ile ne okursa tool döngüsünün her turunda yeniden gönderilir.
+    101 KB'lik gmail.json'u okutmak, iki mail özetlemek için 26 bin tokenın
+    birkaç kez faturalanması demekti.
+    """
+    ham = _json_oku("state/raw/gmail.json") or {}
+    govdeler = {str(m.get("id")): m for m in ham.get("mailler", [])}
+    liste = []
+    for m in bekleyen:
+        h = govdeler.get(str(m["id"]), {})
+        liste.append({
+            "id": m["id"],
+            "gonderen": m.get("gonderen"),
+            "alici": h.get("alici"),
+            "konu": m.get("konu"),
+            "tarih": m.get("tarih"),
+            "ham_skor": m.get("ham_skor"),
+            "sinyaller": m.get("sinyaller"),
+            "ekler": h.get("ekler") or [],
+            "govde": h.get("govde") or "",
+        })
+    yol = os.path.join(KOK, "state", "ozetlenecek.json")
+    os.makedirs(os.path.dirname(yol), exist_ok=True)
+    with io.open(yol, "w", encoding="utf-8") as f:
+        json.dump({"mailler": liste}, f, ensure_ascii=False, indent=2)
+    return yol
+
+
+def mailleri_skorla():
+    """Kural motoruyla digest'i yazar, modele gidecek mailleri döner.
+
+    İşin kendisi `skorlama.digest_guncelle` içinde: canlı izleyici de aynı
+    fonksiyonu kullanır, böylece mail hangi yoldan gelirse gelsin aynı şekilde
+    puanlanıp aynı dosyaya düşer.
+    """
+    import skorlama
+    return skorlama.digest_guncelle()
+
+
 def brief(ilerleme=None):
-    """Günlük brifingi üretir: üç toplayıcı paralel, sonra proje-agent, sonra harman."""
+    """Günlük brifingi üretir: toplayıcılar, sonra proje-agent, sonra harman."""
     def bildir(m):
         if ilerleme:
             ilerleme(m)
 
+    # Mail tarafı önce kuralla elenir; model yalnızca eşiği geçenleri görür.
+    bildir("Mailler skorlanıyor (kural motoru, model çağrılmıyor)…")
+    digest, bekleyen = mailleri_skorla()
+    mail_sonucu = None
+    if digest is None:
+        mail_sonucu = "atlandi: state/raw/gmail.json yok (kaynak bagli degil)"
+    elif not bekleyen:
+        mail_sonucu = ("%d mail skorlandi, esigi (%d) gecen yok — model cagrilmadi."
+                       % (len(digest["maddeler"]), ESIK))
+    bildir(mail_sonucu or "%d mail skorlandi, %d tanesi ozetlenecek."
+           % (len(digest["maddeler"]), len(bekleyen)))
+
+    # Diğer toplayıcılar ham veri dosyasına bakar; kaynak bağlı değilse çağrılmaz.
     isler = {
-        "mail-agent": "state/raw/gmail.json dosyasını işle ve çıktını yaz.",
-        "social-agent": "state/raw/instagram.json dosyasını işle ve çıktını yaz.",
-        "calendar-agent": "state/raw/calendar.json dosyasını işle ve çıktını yaz.",
+        "social-agent": "state/raw/instagram.json",
+        "calendar-agent": "state/raw/calendar.json",
     }
+    calisacak = {ad: kaynak for ad, kaynak in isler.items()
+                 if os.path.exists(os.path.join(KOK, kaynak))}
+    sonuclar = {ad: "atlandi: %s yok (kaynak bagli degil)" % kaynak
+                for ad, kaynak in isler.items() if ad not in calisacak}
 
-    bildir("Üç toplayıcı agent çalışıyor…")
-    with ThreadPoolExecutor(max_workers=3) as havuz:
-        gelecek = {ad: havuz.submit(agent_calistir, ad, istek)
-                   for ad, istek in isler.items()}
-        sonuclar = {}
-        for ad, g in gelecek.items():
-            try:
-                sonuclar[ad] = g.result()
-            except Exception as hata:
-                sonuclar[ad] = "HATA: %s" % hata
+    # Mail ajanının işi artık skorlamak değil: yalnızca eşiği geçen maillere
+    # özet, aksiyon ve taslak yazmak.
+    if bekleyen:
+        calisacak["mail-agent"] = "state/raw/gmail.json"
 
-    bildir("Proje belleği güncelleniyor…")
-    try:
-        sonuclar["proje-agent"] = agent_calistir(
-            "proje-agent",
-            "Üç digest dosyasını oku, projelere olay öner ve durum.json dosyalarını türet.",
-        )
-    except Exception as hata:
-        sonuclar["proje-agent"] = "HATA: %s" % hata
+    if calisacak:
+        bildir("%d toplayıcı agent çalışıyor…" % len(calisacak))
+        with ThreadPoolExecutor(max_workers=len(calisacak)) as havuz:
+            gelecek = {}
+            for ad, kaynak in calisacak.items():
+                if ad == "mail-agent":
+                    # Ajana yalnizca ozetlenecek maillerin govdesi verilir.
+                    # gmail.json'un tamamini okutmak 26 bin token, ustelik tool
+                    # dongusunde her turda yeniden gonderiliyordu.
+                    ozetlenecek_yaz(bekleyen)
+                    istek = (
+                        "state/ozetlenecek.json dosyasini oku ve icindeki her mail icin "
+                        "ozet, aksiyon, son_tarih ve gerekiyorsa taslak uret. "
+                        "Sonucu state/ozetler.json dosyasina yaz. "
+                        "BASKA HICBIR DOSYAYI OKUMA — govdeler o dosyanin icinde. "
+                        "Skorlama senin isin degil.")
+                else:
+                    istek = "%s dosyasını işle ve çıktını yaz." % kaynak
+                gelecek[ad] = havuz.submit(agent_calistir, ad, istek)
+            for ad, g in gelecek.items():
+                try:
+                    sonuclar[ad] = g.result()
+                except Exception as hata:
+                    sonuclar[ad] = "HATA: %s" % hata
+    elif digest is None:
+        bildir("Hiçbir veri kaynağı bağlı değil — toplayıcılar atlandı.")
+
+    if mail_sonucu:
+        sonuclar["mail-agent"] = mail_sonucu
+
+    # Proje belleği digest'lerden beslenir; hiç digest yoksa okuyacağı şey yok.
+    if calisacak or digest:
+        bildir("Proje belleği güncelleniyor…")
+        try:
+            sonuclar["proje-agent"] = agent_calistir(
+                "proje-agent",
+                "Mevcut digest dosyalarını oku (state/brifing-girdisi.json, "
+                "state/social-queue.json, state/agenda.json — yalnızca var olanları), "
+                "projelere olay öner ve durum.json dosyalarını türet. "
+                "brifing-girdisi.json yalnızca önemli maddeleri taşır; elenenler "
+                "`elenen_dusuk_oncelikli` sayısındadır ve proje olayı üretmezler.",
+            )
+        except Exception as hata:
+            sonuclar["proje-agent"] = "HATA: %s" % hata
+    else:
+        sonuclar["proje-agent"] = "atlandi: islenecek digest yok"
+
+    if not calisacak and not digest:
+        # Harmanlayacak hiçbir şey yok; boşuna bir çağrı daha yapma.
+        return {"brifing": "Bağlı bir veri kaynağı yok, tarayacak bir şey bulamadım.",
+                "agentlar": sonuclar}
 
     bildir("Brifing harmanlanıyor…")
     brifing = calistir(
         cekirdek_sistemi(),
         "Alt agent'lar çalıştı ve state/ ile projects/ altındaki dosyaları güncelledi. "
-        "Şimdi state/inbox-digest.json, state/social-queue.json, state/agenda.json ve "
-        "projects/*/durum.json dosyalarını oku ve günlük brifingi üret. "
-        "persona.md içindeki brifing formatına uy. Yalnızca brifing metnini dön.",
+        "Şimdi state/brifing-girdisi.json, state/social-queue.json, state/agenda.json ve "
+        "projects/*/durum.json dosyalarından VAR OLANLARI oku ve günlük brifingi üret. "
+        "brifing-girdisi.json kural motorunun önemli bulduğu maddeleri taşır; elenenleri "
+        "tek tek arama, sayıları `elenen_dusuk_oncelikli` alanında — onlardan en fazla "
+        "tek bir satırla söz et (\"47 düşük öncelikli mail\" gibi). "
+        "state/inbox-digest.json dosyasını AÇMA, gereksiz yere büyüktür. "
+        "Olmayan dosya bağlanmamış bir kaynaktır — eksik diye şikayet etme, o başlığı "
+        "hiç açma. persona.md içindeki brifing formatına uy. Yalnızca brifing metnini dön.",
         OKUMA_ARACLARI,
     )
     return {"brifing": brifing, "agentlar": sonuclar}
