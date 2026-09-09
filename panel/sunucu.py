@@ -171,6 +171,7 @@ def toplu_durum():
         "bildirimler": bildirimleri_oku(),
         "sohbet": sohbet_gecmisi(),
         "takvim": takvim_penceresi(),
+        "konular": konular_durumu(),
         "mail": oku_json("state/inbox-digest.json", {}),
         "sosyal": oku_json("state/social-queue.json", {}),
         "ajanda": oku_json("state/agenda.json", {}),
@@ -255,6 +256,146 @@ def taslak_onayi(govde):
         "gonderildi": False,
         "mesaj": "Onaylandı ve kaydedildi. Gerçek gönderim için Gmail bağlantısı gerekiyor.",
     }
+
+
+def konular_durumu():
+    """Konular sayfasının verisi: ortak sözlük + kullanıcının kendi konuları.
+
+    Her gövdenin son taramada kaç maile dokunduğu da hesaplanır — kullanıcı
+    eklediği kelimenin işe yarayıp yaramadığını görebilmeli.
+    """
+    try:
+        import skorlama
+    except Exception:
+        return {"ortak": [], "kendi": [], "kapali": []}
+
+    maddeler = (oku_json("state/inbox-digest.json", {}) or {}).get("maddeler", [])
+    ham = {str(m.get("id")): m for m in
+           (oku_json("state/raw/gmail.json", {}) or {}).get("mailler", [])}
+
+    def dokunma(govde):
+        kalip = skorlama.kalip_kur([govde])
+        if not kalip:
+            return 0
+        sayi = 0
+        for m in maddeler:
+            h = ham.get(str(m.get("id")), {})
+            metin = (m.get("konu") or "") + "\n" + (h.get("govde") or "")
+            if kalip.search(metin):
+                sayi += 1
+        return sayi
+
+    yerel = skorlama.kullanici_konulari()
+    kapali = [str(a).lower() for a in (yerel.get("kapali") or [])]
+
+    ortak = []
+    for ad, k in sorted(skorlama.ortak_sozluk().items()):
+        ortak.append({
+            "kategori": ad, "agirlik": k["agirlik"],
+            "govde_sayisi": len(k["govdeler"]),
+            "ornekler": k["govdeler"][:6],
+            "kapali": ad in kapali,
+        })
+
+    kendi = []
+    for konu in yerel.get("konular") or []:
+        if isinstance(konu, dict) and konu.get("kelime"):
+            kendi.append({
+                "kelime": konu["kelime"],
+                "agirlik": konu.get("agirlik", 30),
+                "kategori": konu.get("kategori") or "kendi-konularim",
+                "dokundu": dokunma(konu["kelime"]),
+            })
+    vip, gurultu = skorlama.kisi_listeleri()
+    yazistiklarim = skorlama.yazistiklarim()
+    return {"ortak": ortak, "kendi": kendi, "kapali": kapali,
+            "vip": vip, "gurultu": gurultu,
+            "yazistiklarim": len(yazistiklarim)}
+
+
+def konu_ekle(govde):
+    import skorlama
+    kelime = (govde.get("kelime") or "").strip()
+    if not kelime:
+        return {"hata": "Kelime boş olamaz."}
+    if len(kelime) < 3:
+        return {"hata": "Çok kısa kelimeler alakasız maillere yapışır; en az 3 harf."}
+    try:
+        agirlik = int(govde.get("agirlik", 30))
+    except (TypeError, ValueError):
+        return {"hata": "Ağırlık bir sayı olmalı."}
+    agirlik = max(-50, min(50, agirlik))
+
+    yerel = skorlama.kullanici_konulari()
+    konular = list(yerel.get("konular") or [])
+    if any(k.get("kelime", "").lower() == kelime.lower() for k in konular
+           if isinstance(k, dict)):
+        return {"hata": "Bu kelime zaten var."}
+    konular.append({"kelime": kelime, "agirlik": agirlik,
+                    "kategori": (govde.get("kategori") or "kendi-konularim")})
+    yerel["konular"] = konular
+    yaz_json("state/konular.json", yerel)
+    return {"tamam": True}
+
+
+def konu_sil(govde):
+    import skorlama
+    kelime = (govde.get("kelime") or "").strip().lower()
+    yerel = skorlama.kullanici_konulari()
+    kalan = [k for k in (yerel.get("konular") or [])
+             if not (isinstance(k, dict) and k.get("kelime", "").lower() == kelime)]
+    yerel["konular"] = kalan
+    yaz_json("state/konular.json", yerel)
+    return {"tamam": True}
+
+
+def kisi_ekle(govde):
+    """VIP ya da gürültü listesine adres ekler. Kişisel veri; yerelde durur."""
+    import skorlama
+    adres = (govde.get("adres") or "").strip().lower()
+    liste = "gurultu" if govde.get("liste") == "gurultu" else "vip"
+    if "@" not in adres or "." not in adres.split("@")[-1]:
+        return {"hata": "Geçerli bir mail adresi girin."}
+    yerel = skorlama.kullanici_konulari()
+    mevcut = [str(a).lower() for a in (yerel.get(liste) or [])]
+    if adres in mevcut:
+        return {"hata": "Bu adres zaten listede."}
+    # Aynı adres iki listede birden olmasın.
+    diger = "gurultu" if liste == "vip" else "vip"
+    yerel[diger] = [a for a in (yerel.get(diger) or [])
+                    if str(a).lower() != adres]
+    yerel[liste] = mevcut + [adres]
+    yaz_json("state/konular.json", yerel)
+    return {"tamam": True}
+
+
+def kisi_sil(govde):
+    import skorlama
+    adres = (govde.get("adres") or "").strip().lower()
+    yerel = skorlama.kullanici_konulari()
+    for liste in ("vip", "gurultu"):
+        yerel[liste] = [a for a in (yerel.get(liste) or [])
+                        if str(a).lower() != adres]
+    yaz_json("state/konular.json", yerel)
+    return {"tamam": True}
+
+
+def kategori_degistir(govde):
+    """Ortak sözlükteki bir kategoriyi açar/kapatır. Ortak dosya değişmez."""
+    import skorlama
+    ad = (govde.get("kategori") or "").strip().lower()
+    if not ad:
+        return {"hata": "Kategori adı yok."}
+    yerel = skorlama.kullanici_konulari()
+    kapali = [str(a).lower() for a in (yerel.get("kapali") or [])]
+    if govde.get("kapat"):
+        if ad not in kapali:
+            kapali.append(ad)
+    else:
+        kapali = [a for a in kapali if a != ad]
+    yerel["kapali"] = kapali
+    yaz_json("state/konular.json", yerel)
+    return {"tamam": True}
 
 
 def takvim_penceresi():
@@ -547,6 +688,11 @@ ROTALAR = {
     "/api/tarama": tarama,
     "/api/etkinlik-ekle": etkinlik_ekle,
     "/api/etkinlik-iptal": etkinlik_iptal,
+    "/api/konu-ekle": konu_ekle,
+    "/api/konu-sil": konu_sil,
+    "/api/kategori": kategori_degistir,
+    "/api/kisi-ekle": kisi_ekle,
+    "/api/kisi-sil": kisi_sil,
 }
 
 

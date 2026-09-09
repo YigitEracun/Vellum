@@ -124,6 +124,36 @@ def calistir():
                    s.skorla(mail(gonderen="Kariyer <noreply@smartrecruiters.com>", toplu=False,
                                  konu="Mülakat daveti — Perşembe 11:00"))["ham_skor"], 70))
 
+    # --- Turkce ek duyarli eslesme
+    # Turkce sondan eklemeli: sozluk "fatura" yazar, metin "faturanız" der.
+    # Kapanis \b olmadan "kaza" govdesi "kazandınız" icinde eslesiyordu.
+    kalip = skorlama.kalip_kur(["fatura", "sözleşme", "ödeme", "mülakat",
+                                "kaza", "ders", "vize", "alın", "son tarih"])
+    for metin in ("faturanız", "sözleşmeyi", "ödemenizi", "mülakata", "fatura",
+                  "son tarihe kadar", "SÖZLEŞMENİN", "alındı", "alınmıştır",
+                  "vizeniz", "kaza raporu"):
+        t.append(esit("ek duyarli: %-18s yakalanmali" % metin,
+                      bool(kalip.search(metin)), True))
+    for metin in ("kazandınız", "kazanç", "derslik", "vizyon", "davetiye",
+                  "faturalandırma sistemi"):
+        t.append(esit("yanlis pozitif degil: %-14s" % metin,
+                      bool(kalip.search(metin)), False))
+
+    # `...` yazimi: araya kelime girebilir.
+    yakin = skorlama.kalip_kur(["başvurunuz ... iletil"])
+    t.append(esit("yakinlik: 'Başvurunuz Başarıyla İletilmiştir'",
+                  bool(yakin.search("Başvurunuz Başarıyla İletilmiştir")), True))
+    t.append(esit("yakinlik: 30 karakterden uzak eslesmez",
+                  bool(yakin.search("Başvurunuz " + "x" * 40 + " iletildi")), False))
+
+    # --- sozluk ayristirma
+    sz = skorlama.sozluk()
+    t.append(esit("sozluk kategorileri okundu", len(sz) >= 8, True))
+    t.append(esit("agirlik dogru okundu", sz["para-sozlesme"]["agirlik"], 30))
+    t.append(esit("negatif agirlik okundu", sz["is-basvurusu-onayi"]["agirlik"], -40))
+    t.append(esit("bicim basliklari kategori sayilmadi",
+                  any(a in sz for a in ("biçim", "bicim", "anahtar")), False))
+
     # --- kimlik bagimsizligi
     bos = skorlama.Skorlayici(kullanici=None)
     r = bos.skorla(mail())

@@ -10,6 +10,7 @@ __pycache__/
 # kontrolune girmemeli.
 state/bildirimler.jsonl
 state/sohbet.jsonl
+state/konular.json
 state/takvim.jsonl
 state/hatirlatmalar.jsonl
 state/ozetler.json

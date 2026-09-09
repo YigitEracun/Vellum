@@ -33,28 +33,76 @@ TARIH_DESEN = re.compile(
     r"monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
     r"son tarih|deadline|bugün|yarın|hafta içinde|kadar)\b", re.I)
 
-PARA_DESEN = re.compile(
-    r"\b(fatura|ödeme|odeme|ücret|ucret|tutar|bedel|sözleşme|sozlesme|kontrat|"
-    r"teklif|fiyat|bütçe|butce|hukuk|avukat|ihtar|icra|vergi|maaş|maas|"
-    r"invoice|payment|contract|billing|receipt|refund)\b", re.I)
+# --------------------------------------------------------- ek duyarlı eşleşme
 
-# İş başvurusu: yalnızca "başvurun alındı" türü onaylar gürültü sayılır; şirketten
-# gelen ilerleme (mülakat, teklif, sonuç) önemlidir. Ayrım gönderene değil konuya bakar.
-BASVURU_ONAYI = re.compile(
-    r"(başvurunuz|basvurunuz|başvurun|basvurun).{0,30}"
-    r"(alınmış|alindi|alındı|iletil|ulaştı|ulasti)|"
-    r"thank you for (applying|your application)|"
-    r"we (have )?received your application|"
-    r"application (received|submitted)|"
-    r"köszönjük.{0,40}jelentkezés|"
-    r"indeed (başvuru|apply|application)", re.I)
+# Türkçe sondan eklemelidir: "fatura" yazan bir sözlük, gerçek metindeki
+# "faturanız"ı kaçırır. Kapanış \b eşleşmeyi keser — ölçtük, kaçırıyordu.
+#
+# Çözüm `\w*` değil: o zaman "kaza" → "kazandınız" gibi yanlış pozitifler açılır
+# (üstelik "kazandınız" tam da pazarlama dilidir). Bunun yerine gerçek çekim
+# eklerinin açık bir listesi kullanılır. "nız" ektir, "ndınız" değildir.
+_EKLER = (
+    "ları", "leri", "lara", "lere", "larda", "lerde", "lardan", "lerden",
+    "nız", "niz", "nuz", "nüz", "nızı", "nizi", "nuzu", "nüzü",
+    "nızın", "nizin", "nuzun", "nüzün", "nıza", "nize", "nuza", "nüze",
+    "nın", "nin", "nun", "nün", "ndan", "nden", "nda", "nde", "na", "ne",
+    "sı", "si", "su", "sü", "sına", "sine", "sını", "sini", "sında", "sinde",
+    "yı", "yi", "yu", "yü", "ya", "ye", "yla", "yle",
+    "lar", "ler", "ım", "im", "um", "üm", "ımız", "imiz",
+    "dan", "den", "tan", "ten", "da", "de", "ta", "te",
+    "a", "e", "ı", "i", "u", "ü", "la", "le", "ce", "ca",
+    # Fiil çekimleri: "alındı", "iletilmiştir", "ulaşacak". Sözlükte gövde
+    # "alın" yazar, ekler burada karşılanır.
+    "dı", "di", "du", "dü", "tı", "ti", "tu", "tü",
+    "dık", "dik", "duk", "dük",
+    "mış", "miş", "muş", "müş", "mıştır", "miştir", "muştur", "müştür",
+    "dır", "dir", "dur", "dür", "dı̇r",
+    "acak", "ecek", "acaktır", "ecektir",
+    "ıyor", "iyor", "uyor", "üyor",
+    "malı", "meli", "malıdır", "melidir",
+    "ıldı", "ildi", "uldu", "üldü", "ılmış", "ilmiş",
+    "ınız", "iniz", "unuz", "ünüz",
+    "s",                                   # İngilizce çoğul
+)
+# Uzundan kısaya: regex ilk eşleşeni alır, "nızı" varken "a" ile durmasın.
+_EK_KALIBI = "(?:%s)?" % "|".join(sorted(_EKLER, key=len, reverse=True))
 
-BASVURU_ILERLEME = re.compile(
-    r"\b(mülakat|mulakat|görüşme|gorusme|interview|"
-    r"iş teklifi|is teklifi|job offer|offer letter|"
-    r"next step|move forward|shortlist|"
-    r"değerlendirme sonucu|degerlendirme sonucu|olumlu|"
-    r"seni?zi? (görmek|gormek) ister)\b", re.I)
+
+def kalip_kur(govdeler):
+    """Gövde listesinden ek duyarlı bir regex kurar.
+
+    Gövde birden çok kelimeden oluşuyorsa ("son tarih") yalnızca sonuncusuna ek
+    eklenir; araya giren boşluklar esnetilir.
+
+    `...` yazımı araya kelime girebileceğini söyler: "başvurunuz ... iletil"
+    kalıbı "Başvurunuz Başarıyla İletilmiştir" cümlesini de yakalar.
+    """
+    parcalar = []
+    for g in govdeler:
+        g = (g or "").strip()
+        if not g:
+            continue
+        kelimeler = [(k if k == "..." else re.escape(k)) for k in g.split()]
+        kelimeler[-1] += _EK_KALIBI
+        desen = ""
+        for i, k in enumerate(kelimeler):
+            if k == "...":
+                continue
+            if i and kelimeler[i - 1] == "...":
+                desen += r".{0,30}"
+            elif i:
+                desen += r"\s+"
+            desen += k
+        parcalar.append(desen)
+    if not parcalar:
+        return None
+    # Kapanış \b şart: onsuz "kaza" gövdesi "kazandınız" içinde eşleşir. Ek
+    # listesi ancak sonu da bağlanınca ayırt edici olur — "nız" ek olduğu için
+    # "faturanız" geçer, "ndınız" ek olmadığı için "kazandınız" geçmez.
+    return re.compile(r"\b(?:%s)\b" % "|".join(parcalar), re.I)
+
+# İş başvurusu kuralları artık config/anahtar-kelimeler.md içinde:
+# is-basvurusu-onayi (negatif) ve is-basvurusu-ilerleme (pozitif) kategorileri.
 
 SORU_DESEN = re.compile(r"\?")
 
@@ -106,15 +154,119 @@ def _adresleri_ayikla(metin):
 
 
 def kisi_listeleri():
-    """config/kisiler.md içindeki VIP ve gürültü adreslerini okur."""
+    """VIP ve gürültü adresleri: config şablonu + kullanıcının kendi listesi.
+
+    Kişi adları ve adresleri kişisel veridir; `config/kisiler.md` git tarafından
+    izlendiği için oraya yazılan gerçek adresler repoya girerdi. Kullanıcının
+    girdileri `state/konular.json` içinde durur ve panelden yönetilir. Dosya
+    şablon olarak kalır — elle düzenlemek isteyen oraya da yazabilir.
+    """
+    vip, gurultu = [], []
     yol = os.path.join(KOK, "config", "kisiler.md")
+    if os.path.exists(yol):
+        metin = io.open(yol, encoding="utf-8", errors="replace").read()
+        # Yorum satırlarındaki örnekler listeye girmemeli.
+        temiz = re.sub(r"<!--.*?-->", "", metin, flags=re.S)
+        vip = _adresleri_ayikla(_bolum(temiz, "VIP"))
+        gurultu = _adresleri_ayikla(_bolum(temiz, "Gürültü"))
+
+    yerel = kullanici_konulari()
+    vip += [str(a).lower() for a in (yerel.get("vip") or [])]
+    gurultu += [str(a).lower() for a in (yerel.get("gurultu") or [])]
+    return sorted(set(vip)), sorted(set(gurultu))
+
+
+def yazistiklarim():
+    """Daha önce mail yazdığınız adresler. Önbellekten okunur, IMAP'e gidilmez.
+
+    Dosyayı `scripts/gmail_fetch.yazistiklarim()` günde bir tazeler; skorlama
+    anlık ve çevrimdışı kalmalı.
+    """
+    yol = os.path.join(KOK, "state", "raw", "yazistiklarim.json")
     if not os.path.exists(yol):
-        return [], []
-    metin = io.open(yol, encoding="utf-8", errors="replace").read()
-    # Yorum satırlarındaki örnekler listeye girmemeli.
-    temiz = re.sub(r"<!--.*?-->", "", metin, flags=re.S)
-    return (_adresleri_ayikla(_bolum(temiz, "VIP")),
-            _adresleri_ayikla(_bolum(temiz, "Gürültü")))
+        return []
+    try:
+        d = json.load(io.open(yol, encoding="utf-8"))
+    except ValueError:
+        return []
+    return [a.lower() for a in (d.get("adresler") or [])]
+
+
+# ------------------------------------------------------------------- sözlük
+
+SOZLUK_DOSYASI = os.path.join(KOK, "config", "anahtar-kelimeler.md")
+KONULAR_DOSYASI = os.path.join(KOK, "state", "konular.json")
+
+
+def ortak_sozluk():
+    """config/anahtar-kelimeler.md — projeyle gelen varsayılan sözlük.
+
+    Biçim: `## kategori +30` başlığı, altında her satır bir gövde.
+    """
+    if not os.path.exists(SOZLUK_DOSYASI):
+        return {}
+    metin = re.sub(r"<!--.*?-->", "", io.open(
+        SOZLUK_DOSYASI, encoding="utf-8", errors="replace").read(), flags=re.S)
+    kategoriler = {}
+    ad = None
+    for satir in metin.splitlines():
+        basliksa = re.match(r"^##\s+([a-z0-9\-]+)\s+([+-]?\d+)\s*$", satir.strip(), re.I)
+        if basliksa:
+            ad = basliksa.group(1).lower()
+            kategoriler[ad] = {"agirlik": int(basliksa.group(2)), "govdeler": []}
+            continue
+        if satir.startswith("#"):
+            ad = None                      # biçim başlıkları kategori değildir
+            continue
+        s = satir.strip()
+        if ad and s and not s.startswith(("|", ">", "-", "*", "`")):
+            kategoriler[ad]["govdeler"].append(s)
+    return {a: k for a, k in kategoriler.items() if k["govdeler"]}
+
+
+def kullanici_konulari():
+    """state/konular.json — panelden girilen konular. Kişisel, git dışı."""
+    if not os.path.exists(KONULAR_DOSYASI):
+        return {}
+    try:
+        d = json.load(io.open(KONULAR_DOSYASI, encoding="utf-8"))
+    except ValueError:
+        return {}
+    return d if isinstance(d, dict) else {}
+
+
+def sozluk():
+    """Ortak sözlük + kullanıcının konuları. Çakışmada kullanıcı kazanır.
+
+    Kullanıcı bir kategoriyi kapatmışsa (`kapali` listesi) o kategori hiç
+    uygulanmaz — ortak dosya değiştirilmez, karar yerel dosyada durur.
+    """
+    birlesik = {a: dict(k) for a, k in ortak_sozluk().items()}
+    yerel = kullanici_konulari()
+
+    for konu in yerel.get("konular") or []:
+        if not isinstance(konu, dict):
+            continue
+        kelime = (konu.get("kelime") or "").strip()
+        if not kelime:
+            continue
+        ad = (konu.get("kategori") or "kendi-konularim").lower()
+        agirlik = konu.get("agirlik")
+        k = birlesik.setdefault(ad, {"agirlik": 30, "govdeler": []})
+        k["govdeler"] = list(k["govdeler"]) + [kelime]
+        if isinstance(agirlik, int):
+            k["agirlik"] = agirlik
+
+    for ad in yerel.get("kapali") or []:
+        birlesik.pop(str(ad).lower(), None)
+    return birlesik
+
+
+def _kaliplar():
+    """Sözlüğü derlenmiş kalıplara çevirir. Her çağrıda yeniden kurulur:
+    kullanıcı panelden kelime eklediğinde bir sonraki skorlama görsün."""
+    return [(ad, k["agirlik"], kalip_kur(k["govdeler"]))
+            for ad, k in sorted(sozluk().items())]
 
 
 def _adres(metin):
@@ -139,6 +291,10 @@ class Skorlayici(object):
             gurultu = g if gurultu is None else gurultu
         self.vip = [a.lower() for a in vip]
         self.gurultu = [a.lower() for a in gurultu]
+        # Sözlük her örnekte bir kez derlenir; panelden kelime eklendiğinde
+        # sonraki skorlama yeni Skorlayici ile kurulur ve değişikliği görür.
+        self.kaliplar = _kaliplar()
+        self.yazistiklarim = set(yazistiklarim())
 
     def skorla(self, m):
         """Bir ham mail kaydını puanlar. Dönen alanlar digest şemasıyla uyumludur."""
@@ -158,6 +314,11 @@ class Skorlayici(object):
             ekle("vip", +40)
         if gonderen and gonderen in self.gurultu:
             ekle("gurultu-listesi", -40)
+        # Kelimeden güçlü bir sinyal: bu adrese daha önce siz yazdınız.
+        # VIP'in (+40) hemen altında — VIP açık tercihtir, bu türetilmiş bir
+        # tahmindir. Boş bir VIP listesinde bile gerçek muhataplar öne çıkar.
+        if gonderen and gonderen in self.yazistiklarim and gonderen not in self.vip:
+            ekle("yazistiginiz-kisi", +35)
 
         # Kimlik bilinmiyorsa tahmin yürütme: bu iki sinyali hiç hesaplama.
         if self.benim:
@@ -178,15 +339,26 @@ class Skorlayici(object):
         if bulten or islem:
             ekle("toplu-gonderim", -50)
 
+        # Sözlükteki negatif kategoriler (başvuru onayı gibi) her koşulda sayılır:
+        # bunlar önemi düşüren sinyaller, bültende de geçerlidir.
+        eksiler = [(ad, ag, k) for ad, ag, k in self.kaliplar if ag < 0]
+        artilar = [(ad, ag, k) for ad, ag, k in self.kaliplar if ag > 0]
+
+        dusuruldu = False
+        for ad, agirlik, kalip in eksiler:
+            if kalip and kalip.search(metin):
+                ekle(ad, agirlik)
+                dusuruldu = True
+
+        # İlerleme sinyali bülteni kurtarır: bültenin gövdesinde geçen "interview"
+        # mülakat daveti değildir, o yüzden bültende hiç aranmaz.
         ilerleme = False
-        if BASVURU_ONAYI.search(metin):
-            # Başvuru onayı: geldiğini bilmek yeterli, aksiyon gerektirmez.
-            ekle("basvuru-onayi", -40)
-        elif not bulten and (BASVURU_ILERLEME.search(konu) or
-                             BASVURU_ILERLEME.search(govde[:400])):
-            # Bültenin gövdesinde geçen "interview" kelimesi mülakat daveti değildir.
-            ekle("basvuru-ilerleme", +45)
-            ilerleme = True
+        if not dusuruldu and not bulten:
+            for ad, agirlik, kalip in artilar:
+                if ad.startswith("is-basvurusu") and kalip and (
+                        kalip.search(konu) or kalip.search(govde[:400])):
+                    ekle(ad, agirlik)
+                    ilerleme = True
 
         # İçerik sinyalleri yalnızca size yazılmış maillerde anlamlı. Bültende geçen
         # tarih sizin son tarihiniz, geçen fiyat sizin faturanız değildir — pazarlama
@@ -195,8 +367,11 @@ class Skorlayici(object):
         if icerik_sayilir:
             if TARIH_DESEN.search(metin):
                 ekle("tarih", +25)
-            if PARA_DESEN.search(metin):
-                ekle("para-sozlesme", +30)
+            for ad, agirlik, kalip in artilar:
+                if ad.startswith("is-basvurusu"):
+                    continue          # yukarıda ele alındı
+                if kalip and kalip.search(metin):
+                    ekle(ad, agirlik)
             if SORU_DESEN.search(konu) or SORU_DESEN.search(govde[:600]):
                 ekle("soru", +15)
 

@@ -1,5 +1,10 @@
 # Kişiler
 
+> **Buraya gerçek adres yazmayın.** Bu dosya sürüm kontrolünde izleniyor; yazdığınız
+> kişi adları ve adresler repoya girer. Kendi VIP ve gürültü listenizi panelin
+> **Konular** sayfasından girin — onlar `state/konular.json` içinde, git dışında durur.
+> Bu dosya şablon olarak kalıyor; iki liste skorlamada birleştiriliyor.
+
 ## VIP (+40)
 
 Bu kişilerden gelen her mail öncelikli sayılır.

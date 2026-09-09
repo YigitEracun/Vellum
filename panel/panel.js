@@ -162,6 +162,8 @@ function cizKunye() {
   s += '<div class="gizle-mobil gezinme"><div class="kunye-baslik">Defter</div><div class="kunye-grup">' +
     ajanSatiri('projeler', null, 'Projeler', (D.projeler || []).length) +
     ajanSatiri('takvim', null, 'Takvim', bekleyenEtkinlik) +
+    ajanSatiri('konular', null, 'Konular',
+      ((D.konular && D.konular.kendi) || []).length) +
     ajanSatiri('arsiv', null, 'Arşiv', (D.arsiv || []).length) +
     '</div></div>';
 
@@ -383,13 +385,14 @@ function cizDefter() {
   else if (defterOdak === 'posta') s += defterPosta();
   else if (defterOdak === 'mesaj') s += defterMesaj();
   else if (defterOdak === 'takvim') s += defterTakvim();
+  else if (defterOdak === 'konular') s += defterKonular();
 
   // Gezinme künyeye taşındı; alttaki etiket şeridi kaldırıldı.
   return s + '</div>';
 }
 
 function defterBasligi(hangi) {
-  const ad = { projeler: 'Projeler', takvim: 'Takvim', ajanda: 'Ajanda',
+  const ad = { projeler: 'Projeler', takvim: 'Takvim', konular: 'Konular', ajanda: 'Ajanda',
     arsiv: 'Arşiv', posta: 'Posta', mesaj: 'Mesaj' };
   return ad[hangi || defterOdak] || 'Defter';
 }
@@ -550,6 +553,123 @@ function defterMesaj() {
   const spam = (D.sosyal && D.sosyal.elenen_spam) || 0;
   if (spam) s += '<p class="bos" style="margin-top:16px">' + spam + ' spam elendi.</p>';
   return s;
+}
+
+// ----------------------------------------------------------------- konular
+
+// Önem skorlamasının içerik sözlüğü. Ortak sözlük projeyle gelir ve salt
+// okunurdur; kullanıcının kendi konuları yereldir ve git dışında durur.
+function defterKonular() {
+  const k = D.konular || { ortak: [], kendi: [] };
+  let s = '<p class="ses">Vellum bir maili şu kelimelere bakarak öne çıkarır. ' +
+    'Aşağıya kendi konularınızı ekleyin — bir firma adı, bir proje, bir kişi. ' +
+    'Kendi konularınız bu bilgisayarda kalır, sürüm kontrolüne girmez.</p>';
+
+  s += '<p class="ayrac">Kendi konularınız</p>';
+  if (k.kendi.length) {
+    s += '<div class="liste">';
+    k.kendi.forEach(x => {
+      s += '<div class="liste-satir"><div class="govde">' +
+        '<p><b>' + kacir(x.kelime) + '</b> <span class="rozet-kucuk">' +
+        (x.agirlik > 0 ? '+' : '') + x.agirlik + '</span></p>' +
+        '<p class="alt kaynak">' +
+        (x.dokundu ? 'son taramada ' + x.dokundu + ' maile dokundu'
+                   : 'son taramada hiçbir maile dokunmadı') + '</p></div>' +
+        '<button class="baglanti" onclick="konuSil(\'' + kacir(x.kelime) + '\')">kaldır</button>' +
+        '</div>';
+    });
+    s += '</div>';
+  } else {
+    s += '<p class="bos">Henüz kendi konunuz yok.</p>';
+  }
+
+  s += '<div class="etkinlik-form">' +
+    '<input type="text" id="yeni-konu" placeholder="Kelime ya da kısa öbek" ' +
+    'onkeydown="if(event.key===\'Enter\')konuEkle()">' +
+    '<input type="number" id="yeni-agirlik" value="30" min="-50" max="50" step="5" ' +
+    'title="Ağırlık: eksi değer önemi düşürür">' +
+    '<button class="btn btn-primary" onclick="konuEkle()">Ekle</button></div>';
+  s += '<p class="bos" style="margin-top:8px">Türkçe ekler kendiliğinden eşleşir: ' +
+    '“fatura” yazmanız yeter, “faturanız” da yakalanır. Kısa kelimeler ' +
+    'alakasız maillere yapışır — gövdeyi uzun tutun.</p>';
+
+  // Kişi listeleri de kişisel veri: config/ değil, yerel dosyada durur.
+  s += '<p class="ayrac">Kişiler</p>' +
+    '<p class="bos">VIP listesindekilerden gelen her mail öne çıkar (+40), ' +
+    'gürültü listesindekiler geri düşer (−40). ' +
+    (k.yazistiklarim ? 'Ayrıca daha önce yazıştığınız <b>' + k.yazistiklarim +
+      '</b> adres kendiliğinden +35 alıyor — VIP listesi boş olsa bile gerçek ' +
+      'muhataplarınız öne çıkar.' : '') + '</p>';
+
+  const kisiListesi = (baslik, liste, sinif) => {
+    let g = '<p class="ayrac-ince">' + baslik + '</p>';
+    if (!liste.length) return g + '<p class="bos">Boş.</p>';
+    g += '<div class="liste ' + (sinif || '') + '">';
+    liste.forEach(a => {
+      g += '<div class="liste-satir"><div class="govde"><p>' + kacir(a) + '</p></div>' +
+        '<button class="baglanti" onclick="kisiSil(\'' + kacir(a) + '\')">kaldır</button></div>';
+    });
+    return g + '</div>';
+  };
+  s += kisiListesi('VIP', k.vip || []) +
+       kisiListesi('Gürültü', k.gurultu || [], 'sonuk');
+
+  s += '<div class="etkinlik-form">' +
+    '<input type="text" id="yeni-kisi" placeholder="ornek@firma.com" ' +
+    'onkeydown="if(event.key===\'Enter\')kisiEkle(\'vip\')">' +
+    '<button class="btn btn-primary" onclick="kisiEkle(\'vip\')">VIP</button>' +
+    '<button class="btn btn-secondary" onclick="kisiEkle(\'gurultu\')">Gürültü</button>' +
+    '</div>';
+
+  s += '<p class="ayrac">Ortak sözlük</p>' +
+    '<p class="bos">Projeyle gelen varsayılan kategoriler. Kullanmadığınızı kapatın.</p>' +
+    '<div class="liste">';
+  k.ortak.forEach(x => {
+    s += '<div class="liste-satir' + (x.kapali ? ' sonuk-satir' : '') + '"><div class="govde">' +
+      '<p><b>' + kacir(x.kategori) + '</b> <span class="rozet-kucuk">' +
+      (x.agirlik > 0 ? '+' : '') + x.agirlik + '</span> · ' + x.govde_sayisi + ' kelime</p>' +
+      '<p class="alt kaynak">' + kacir(x.ornekler.join(' · ')) + '…</p></div>' +
+      '<button class="baglanti" onclick="kategoriDegistir(\'' + kacir(x.kategori) +
+      '\',' + (x.kapali ? 'false' : 'true') + ')">' +
+      (x.kapali ? 'aç' : 'kapat') + '</button></div>';
+  });
+  s += '</div>';
+  return s;
+}
+
+async function konuEkle() {
+  const kelime = (document.getElementById('yeni-konu') || {}).value || '';
+  const agirlik = (document.getElementById('yeni-agirlik') || {}).value || '30';
+  if (!kelime.trim()) return;
+  const r = await cagir('/api/konu-ekle', { kelime: kelime.trim(), agirlik: Number(agirlik) });
+  if (r.hata) { hataMetni = r.hata; return ciz(); }
+  await yenile();
+}
+
+async function konuSil(kelime) {
+  const r = await cagir('/api/konu-sil', { kelime: kelime });
+  if (r.hata) { hataMetni = r.hata; return ciz(); }
+  await yenile();
+}
+
+async function kisiEkle(liste) {
+  const adres = (document.getElementById('yeni-kisi') || {}).value || '';
+  if (!adres.trim()) return;
+  const r = await cagir('/api/kisi-ekle', { adres: adres.trim(), liste: liste });
+  if (r.hata) { hataMetni = r.hata; return ciz(); }
+  await yenile();
+}
+
+async function kisiSil(adres) {
+  const r = await cagir('/api/kisi-sil', { adres: adres });
+  if (r.hata) { hataMetni = r.hata; return ciz(); }
+  await yenile();
+}
+
+async function kategoriDegistir(kategori, kapat) {
+  const r = await cagir('/api/kategori', { kategori: kategori, kapat: kapat });
+  if (r.hata) { hataMetni = r.hata; return ciz(); }
+  await yenile();
 }
 
 // ------------------------------------------------------------------ takvim
@@ -913,6 +1033,7 @@ function veriImzasi(d) {
     (d.bildirimler || []).length,
     (d.sohbet || []).length,
     (d.takvim || []).length,
+    ((d.konular && d.konular.kendi) || []).length,
     ((d.sosyal && d.sosyal.konusmalar) || []).length,
     ((d.ajanda && d.ajanda.etkinlikler) || []).length,
     (d.projeler || []).length,

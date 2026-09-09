@@ -26,6 +26,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from email.header import decode_header, make_header
 
@@ -262,6 +263,13 @@ def cek(kuru=False):
         except Exception:
             pass
 
+    # Yazışma listesini günde bir tazele. Skorlamanın en güçlü sinyali bu ve
+    # bedava; başarısız olursa çekme bozulmasın.
+    try:
+        yazistiklarim()
+    except Exception as hata:
+        print("yazisma listesi tazelenemedi:", hata)
+
     return {
         "cekildi": datetime.now(TZ).isoformat(),
         "hesap": adres,
@@ -299,6 +307,84 @@ def arsivle(veri):
                 kayit = dict(m, hesap=veri["hesap"], arsivlendi=veri["cekildi"])
                 f.write(json.dumps(kayit, ensure_ascii=False) + "\n")
     return len(yeni), len(varolan) + len(yeni)
+
+
+YAZISTIKLARIM_DOSYASI = os.path.join(KOK, "state", "raw", "yazistiklarim.json")
+YAZISMA_AY = 12          # kaç aylık gönderilmiş mail taranır
+YAZISMA_TAZELIK = 86400  # saniye: günde bir yeter
+
+
+def _gonderilenler_klasoru(kutu):
+    """Gönderilenler klasörünü SPECIAL-USE bayrağından bulur.
+
+    Ada göre aramak kırılgan: klasör dile göre "Sent Mail" ya da "Gönderilmiş
+    Mailler" olabiliyor. `\\Sent` bayrağı dilden bağımsızdır.
+    """
+    tamam, satirlar = kutu.list()
+    if tamam != "OK":
+        return None
+    yedek = None
+    for ham in satirlar or []:
+        satir = ham.decode("utf-8", "replace") if isinstance(ham, bytes) else str(ham)
+        ad = satir.split(' "/" ')[-1].strip().strip('"') if ' "/" ' in satir else None
+        if not ad:
+            continue
+        if "\\Sent" in satir:
+            return ad
+        if yedek is None and ("sent" in ad.lower() or "gönderil" in ad.lower()):
+            yedek = ad
+    return yedek
+
+
+def yazistiklarim(zorla=False):
+    """Daha önce mail yazdığınız adreslerin kümesi.
+
+    Araştırmaya göre "bu kişiyle yazıştınız mı" her anahtar kelimeden güçlü bir
+    önem sinyali. Bedava: IMAP sorgusu, model yok. Günde bir tazelenir.
+    """
+    if not zorla and os.path.exists(YAZISTIKLARIM_DOSYASI):
+        yas = time.time() - os.path.getmtime(YAZISTIKLARIM_DOSYASI)
+        if yas < YAZISMA_TAZELIK:
+            try:
+                return set(json.load(io.open(YAZISTIKLARIM_DOSYASI,
+                                             encoding="utf-8")).get("adresler", []))
+            except ValueError:
+                pass
+
+    adres, sifre = ayarlar()
+    kutu = imaplib.IMAP4_SSL(SUNUCU, 993)
+    adresler = set()
+    try:
+        kutu.login(adres, sifre)
+        klasor = _gonderilenler_klasoru(kutu)
+        if not klasor:
+            return set()
+        tamam, _ = kutu.select('"%s"' % klasor, readonly=True)
+        if tamam != "OK":
+            return set()
+        sinir = (datetime.now(TZ) - timedelta(days=30 * YAZISMA_AY)).strftime("%d-%b-%Y")
+        for kimlik in _arama(kutu, '(SINCE "%s")' % sinir):
+            tamam, veri = kutu.uid(
+                "FETCH", kimlik, "(BODY.PEEK[HEADER.FIELDS (TO CC)])")
+            if tamam != "OK" or not veri or not isinstance(veri[0], tuple):
+                continue
+            mesaj = email.message_from_bytes(veri[0][1])
+            for baslik in ("To", "Cc"):
+                for _, posta in email.utils.getaddresses([mesaj.get(baslik) or ""]):
+                    if posta:
+                        adresler.add(posta.lower())
+    finally:
+        try:
+            kutu.logout()
+        except Exception:
+            pass
+
+    adresler.discard(adres.lower())      # kendinize yazdıklarınız sayılmaz
+    os.makedirs(os.path.dirname(YAZISTIKLARIM_DOSYASI), exist_ok=True)
+    with io.open(YAZISTIKLARIM_DOSYASI, "w", encoding="utf-8") as f:
+        json.dump({"guncelleme": datetime.now(TZ).isoformat(),
+                   "adresler": sorted(adresler)}, f, ensure_ascii=False, indent=2)
+    return adresler
 
 
 def cek_uid_ustu(son_uid, tavan=20):
