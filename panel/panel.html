@@ -50,6 +50,14 @@ body {
 .ajan .sayi { margin-left: auto; color: var(--color-neutral-600); font-size: 12px; }
 .n-mavi { background: var(--color-accent); }
 .n-sari { background: var(--color-process-yellow); }
+/* Ajan olmayan sayfalarda nokta yok ama yeri durur: metinler aynı hizada başlar. */
+.n-yok { background: none; }
+
+/* Açık olan sayfa: soldaki ince çizgi hangi sayfadasınız onu söyler. */
+.ajan.etkin { color: var(--color-accent-700); font-weight: 600; }
+.ajan.etkin .sayi { color: var(--color-accent-700); }
+.ajan.etkin .nokta.n-yok { background: var(--color-accent-700); border-radius: 0; width: 2px; height: 12px; }
+.ajan.etkin .nokta:not(.n-yok) { box-shadow: 0 0 0 3px var(--color-accent-200, #cbeeff); }
 
 .bugun { display: flex; flex-direction: column; gap: 11px; font-size: 13px; line-height: 1.4; color: var(--color-neutral-800); }
 .bugun .sa { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; font-weight: 600; }
@@ -70,6 +78,56 @@ body {
   font-size: 11px; line-height: 1; letter-spacing: .14em; text-transform: uppercase;
   color: var(--color-neutral-600); margin-bottom: 22px;
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+
+/* — takvim — */
+.takvim-baslik { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
+.takvim-ay {
+  flex: 1; font-family: var(--font-heading); font-size: 19px;
+  letter-spacing: -.005em; color: var(--color-neutral-900);
+}
+.takvim { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--color-divider); }
+.takvim-gunadi {
+  background: var(--color-bg); padding: 6px 8px; font-size: 10.5px;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--color-neutral-600);
+}
+.takvim-hucre {
+  background: var(--color-bg); min-height: 84px; padding: 6px 8px 8px;
+  display: flex; flex-direction: column; gap: 3px; cursor: pointer;
+}
+.takvim-hucre:hover { background: var(--color-accent-100, #e9f8ff); }
+.takvim-hucre.bos-hucre { cursor: default; background: var(--color-neutral-100); opacity: .5; }
+.takvim-hucre.gecmis { opacity: .55; }
+.takvim-hucre.bugun { box-shadow: inset 0 0 0 2px var(--color-accent-700, #006786); }
+.takvim-hucre.acik { background: var(--color-accent-100, #e9f8ff); }
+.takvim-gun { font-size: 13px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums; }
+.takvim-hucre.bugun .takvim-gun { color: var(--color-accent-700); font-weight: 600; }
+.takvim-etkinlik {
+  font-size: 11.5px; line-height: 1.35; color: var(--color-neutral-900);
+  border-left: 2px solid var(--color-accent-2, #d6006c); padding-left: 5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.takvim-daha { font-size: 10.5px; color: var(--color-neutral-600); }
+
+.gun-paneli { margin-top: 26px; }
+.etkinlik-form { display: flex; gap: 10px; margin-top: 14px; align-items: center; }
+.etkinlik-form input[type="text"] { flex: 1; }
+.etkinlik-form input {
+  border: 0; border-bottom: 1px solid var(--color-divider); background: transparent;
+  padding: 7px 2px; font-family: var(--font-body); font-size: 15px; color: var(--color-text);
+  outline: none;
+}
+.etkinlik-form input:focus { border-bottom-color: var(--color-accent-700); }
+.kaynak { color: var(--color-neutral-600); }
+
+@media (max-width: 720px) {
+  /* Dar ekranda 7 sütunluk ızgara okunmaz; gün listesine düşer. */
+  .takvim { grid-template-columns: repeat(7, 1fr); }
+  .takvim-hucre { min-height: 54px; padding: 4px; }
+  .takvim-etkinlik, .takvim-daha { display: none; }
+  .takvim-hucre.dolu .takvim-gun::after {
+    content: ' ·'; color: var(--color-accent-2, #d6006c); font-weight: 700;
+  }
 }
 
 /* Posta listesi: her satir tiklanip okunabilir. */
@@ -256,6 +314,14 @@ body {
     padding: var(--space-3) var(--space-4);
   }
   .kunye .gizle-mobil { display: none; }
+  /* Gezinme kunyeye tasindi; mobilde de erisilebilir kalmali. Baslik ve
+     sayilar dusuyor, ogeler yatay bir seride diziliyor. */
+  .kunye .gezinme { display: contents; }
+  .kunye .gezinme .kunye-baslik { display: none; }
+  .kunye .gezinme .kunye-grup { flex-direction: row; gap: 16px; }
+  .kunye .gezinme .ajan { width: auto; padding: 0; }
+  .kunye .gezinme .ajan .sayi, .kunye .gezinme .ajan .nokta { display: none; }
+  .kunye .gezinme .ajan.etkin { text-decoration: underline; text-underline-offset: 4px; }
   .kunye-alt { margin: 0; padding: 0; border: 0; }
   .akis { padding: var(--space-4) var(--space-4) var(--space-2); }
   .besteci { padding: var(--space-3) var(--space-4) var(--space-4); }

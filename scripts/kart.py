@@ -9,7 +9,9 @@ kalmak zorunda; sunucunun içinden çağırmak yerine kısa ömürlü bir süre�
 hem daha sağlam hem daha basit — kart kapanınca süreç de biter.
 
 Kullanım (izleyici bunu kendi çağırır):
-    python scripts/kart.py --skor 100 --kimden "İK <ik@x.com>" --konu "Mülakat daveti"
+    python scripts/kart.py --ust "ÖNEMLİ MAİL" --baslik "Mülakat daveti" \
+                           --alt "İK <ik@x.com>" --rozet 120
+    python scripts/kart.py --ust "HATIRLATMA" --baslik "Mülakat" --alt "Yarın 14:00'te"
 """
 
 import argparse
@@ -45,7 +47,9 @@ def kisalt(metin, n):
     return metin if len(metin) <= n else metin[:n - 1] + "…"
 
 
-def goster(skor, kimden, konu, sure_ms=SURE_MS, adres=PANEL_ADRESI):
+def goster(baslik, alt="", ust="ÖNEMLİ MAİL", rozet="",
+           sure_ms=SURE_MS, adres=PANEL_ADRESI):
+    """Kartı çizer. `ust` künye satırı, `rozet` sağdaki vurgu (skor ya da tür)."""
     import tkinter as tk
 
     kok = tk.Tk()
@@ -70,19 +74,21 @@ def goster(skor, kimden, konu, sure_ms=SURE_MS, adres=PANEL_ADRESI):
     ic = tk.Frame(govde, bg=KAGIT)
     ic.place(x=17, y=13, width=GENISLIK - 36, height=YUKSEKLIK - 28)
 
+    ust_metni = ust.upper() if ust else "VELLUM"
     ust = tk.Frame(ic, bg=KAGIT)
     ust.pack(fill="x")
     tk.Label(ust, text="VELLUM", bg=KAGIT, fg=SOLGUN,
              font=yazitipi(kok, 8, True)).pack(side="left")
-    tk.Label(ust, text="ÖNEMLİ MAİL", bg=KAGIT, fg=SOLGUN,
+    tk.Label(ust, text=ust_metni, bg=KAGIT, fg=SOLGUN,
              font=yazitipi(kok, 8)).pack(side="left", padx=(8, 0))
-    tk.Label(ust, text=str(skor), bg=KAGIT, fg=MAGENTA,
-             font=yazitipi(kok, 9, True)).pack(side="right")
+    if rozet:
+        tk.Label(ust, text=str(rozet), bg=KAGIT, fg=MAGENTA,
+                 font=yazitipi(kok, 9, True)).pack(side="right")
 
-    tk.Label(ic, text=kisalt(konu, 62), bg=KAGIT, fg=MUREKKEP, justify="left",
+    tk.Label(ic, text=kisalt(baslik, 62), bg=KAGIT, fg=MUREKKEP, justify="left",
              anchor="w", wraplength=GENISLIK - 44,
              font=yazitipi(kok, 12, True)).pack(fill="x", pady=(9, 0))
-    tk.Label(ic, text=kisalt(kimden, 52), bg=KAGIT, fg=SOLGUN, anchor="w",
+    tk.Label(ic, text=kisalt(alt, 52), bg=KAGIT, fg=SOLGUN, anchor="w",
              font=yazitipi(kok, 9)).pack(fill="x", pady=(4, 0))
     tk.Label(ic, text="panele git →", bg=KAGIT, fg=CAMGOBEGI, anchor="w",
              font=yazitipi(kok, 9)).pack(fill="x", pady=(7, 0))
@@ -116,13 +122,14 @@ def goster(skor, kimden, konu, sure_ms=SURE_MS, adres=PANEL_ADRESI):
 
 def main():
     a = argparse.ArgumentParser()
-    a.add_argument("--skor", default="")
-    a.add_argument("--kimden", default="")
-    a.add_argument("--konu", default="")
+    a.add_argument("--baslik", default="")
+    a.add_argument("--alt", default="")
+    a.add_argument("--ust", default="ÖNEMLİ MAİL")
+    a.add_argument("--rozet", default="")
     a.add_argument("--sure", type=int, default=SURE_MS)
     d = a.parse_args()
     try:
-        goster(d.skor, d.kimden, d.konu, d.sure)
+        goster(d.baslik, d.alt, d.ust, d.rozet, d.sure)
     except Exception as hata:
         print("kart gosterilemedi:", hata, file=sys.stderr)
         return 1

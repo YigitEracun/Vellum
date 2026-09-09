@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.join(KOK, "scripts"))
 
 import gmail_fetch  # noqa: E402
 import skorlama  # noqa: E402
+import takvim  # noqa: E402
 
 ARALIK = 60          # saniye
 ESIK = 40            # ham skor: bunun üstü bildirilir
@@ -67,7 +68,8 @@ def _toast(baslik, govde):
         return False, str(hata)
 
 
-def bildir(baslik, govde, skor="", kimden="", konu=""):
+def bildir(baslik, govde, skor="", kimden="", konu="",
+           ust=None, rozet=None, alt=None):
     """Broadsheet kartını açar. Kart çizilemezse Windows bildirimine düşer.
 
     Kart ayrı bir süreçte açılır: Tkinter'ın çağrıları tek iş parçacığında
@@ -79,8 +81,11 @@ def bildir(baslik, govde, skor="", kimden="", konu=""):
     if not os.path.exists(yorumlayici):
         yorumlayici = sys.executable
     try:
-        subprocess.Popen([yorumlayici, kart, "--skor", str(skor),
-                          "--kimden", kimden or "", "--konu", konu or baslik],
+        subprocess.Popen([yorumlayici, kart,
+                          "--ust", ust or "ÖNEMLİ MAİL",
+                          "--baslik", (konu or baslik) if alt is None else baslik,
+                          "--alt", alt if alt is not None else (kimden or ""),
+                          "--rozet", str(rozet if rozet is not None else skor)],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True, ""
     except Exception as hata:
@@ -147,6 +152,93 @@ def sisteme_dusur(yeniler):
         print("sisteme dusurme kismi hata:", hata)
 
 
+# -------------------------------------------------------------- hatirlatma
+
+HATIRLATMA_DOSYASI = os.path.join(KOK, "state", "hatirlatmalar.jsonl")
+SABAH = 8            # hatırlatmanın verileceği saat
+PENCERELER = ("bir_gun_once", "etkinlik_gunu")
+
+
+def _hatirlatilanlar():
+    """Daha önce verilmiş (etkinlik, pencere) çiftleri."""
+    if not os.path.exists(HATIRLATMA_DOSYASI):
+        return set()
+    verilen = set()
+    for satir in io.open(HATIRLATMA_DOSYASI, encoding="utf-8", errors="replace"):
+        satir = satir.strip()
+        if not satir:
+            continue
+        try:
+            k = json.loads(satir)
+        except ValueError:
+            continue
+        verilen.add((k.get("etkinlik_id"), k.get("pencere")))
+    return verilen
+
+
+def hatirlatma_isaretle(h):
+    os.makedirs(os.path.dirname(HATIRLATMA_DOSYASI), exist_ok=True)
+    with io.open(HATIRLATMA_DOSYASI, "a", encoding="utf-8") as f:
+        f.write(json.dumps({
+            "etkinlik_id": h["etkinlik_id"], "pencere": h["pencere"],
+            "t": datetime.now(takvim.TZ).isoformat(),
+        }, ensure_ascii=False) + "\n")
+
+
+def hatirlatilacaklar(su_an=None):
+    """Şu an verilmesi gereken hatırlatmaları döner. Model çağırmaz.
+
+    İki pencere: etkinlikten bir gün önce ve etkinlik günü. İkisi de sabah
+    SABAH saatinden sonra verilir — panel o saatte kapalıysa açıldıktan sonraki
+    ilk turda çıkar, yani hatırlatma kaçmaz, gecikir.
+    """
+    su_an = su_an or datetime.now(takvim.TZ)
+    if su_an.hour < SABAH:
+        return []
+
+    verilen = _hatirlatilanlar()
+    bugun = su_an.date()
+    cikti = []
+    for e in takvim.turet():
+        try:
+            baslar = datetime.fromisoformat(e["baslangic"])
+        except ValueError:
+            continue
+        fark = (baslar.date() - bugun).days
+        if fark == 0:
+            pencere, ne_zaman = "etkinlik_gunu", "Bugün"
+        elif fark == 1:
+            pencere, ne_zaman = "bir_gun_once", "Yarın"
+        else:
+            continue                      # geçmiş ya da uzak
+        if (e["id"], pencere) in verilen:
+            continue
+        saat = (" %s'te" % baslar.strftime("%H:%M")) if e.get("saatli", True) else ""
+        cikti.append({
+            "etkinlik_id": e["id"],
+            "pencere": pencere,
+            "ust": "VELLUM · HATIRLATMA",
+            "baslik": e.get("baslik") or "(başlıksız)",
+            "alt": "%s%s%s" % (ne_zaman, saat,
+                               (" · " + e["yer"]) if e.get("yer") else ""),
+            "rozet": {"mulakat": "mülakat", "toplanti": "toplantı",
+                      "gorusme": "görüşme", "son_tarih": "son tarih"}.get(e.get("tur"), ""),
+        })
+    return cikti
+
+
+def hatirlatma_turu(sessiz=False):
+    """Zamanı gelen hatırlatmaları bildirir. Dönen: bildirilen hatırlatmalar."""
+    verildi = []
+    for h in hatirlatilacaklar():
+        if not sessiz:
+            bildir(h["baslik"], h["alt"],
+                   ust=h["ust"], rozet=h["rozet"], alt=h["alt"])
+        hatirlatma_isaretle(h)
+        verildi.append(h)
+    return verildi
+
+
 # --------------------------------------------------------------------- tur
 
 def tur(skorlayici=None, sessiz=False):
@@ -193,6 +285,8 @@ def main():
           % (ARALIK, ESIK, son_uid_oku()))
     while True:
         try:
+            for h in hatirlatma_turu():
+                print("Hatirlatma: %s — %s" % (h["baslik"], h["alt"]))
             sayi, bildirilen = tur()
             if sayi:
                 print("%s  %d yeni mail, %d bildirim"

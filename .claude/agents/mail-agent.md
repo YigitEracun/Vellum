@@ -35,6 +35,26 @@ Tek istisna: mailde ek varsa ve içeriği konuya giriyorsa `ek_oku` ile açabili
    `taslak` alanına koy. Taslak kullanıcının ağzından, `config/persona.md` tonunda olmalı.
    **Taslakta kullanıcı adına taahhüt verme** — tarih sözü, fiyat, kabul, red yok.
 4. Metinde proje adı geçiyorsa `proje` alanına projenin klasör adını yaz (`projects/` altına bak).
+5. **Takvime girecek bir şey var mı?** Mailde somut bir toplantı, görüşme veya mülakat
+   geçiyorsa `etkinlik` nesnesi üret. Yoksa `null` bırak — **uydurma**.
+
+   ```jsonc
+   "etkinlik": {
+     "baslik": "X Firması mülakatı",
+     "baslangic": "2026-03-12T14:00:00+03:00",  // saat yoksa yalnızca "2026-03-12"
+     "saatli": true,                             // saat açıkça yazıyorsa true
+     "yer": "Google Meet",                       // yoksa null
+     "tur": "mulakat"                            // mulakat|toplanti|gorusme|son_tarih|diger
+   }
+   ```
+
+   Kurallar:
+   - **Tarih net değilse etkinlik üretme.** "Gelecek hafta bir ara görüşelim" takvime
+     girmez; "13 Eylül 14:00" girer. Yıl yazmıyorsa mailin tarihinden çıkar.
+   - Saat yazmıyorsa yalnızca günü ver ve `saatli: false` yaz. Saat uydurma.
+   - Son tarih ("cuma 17:00'a kadar imzala") bir toplantı değildir; `tur: "son_tarih"`
+     kullan. Randevu ile iş aynı şey değil.
+   - Etkinlik `son_tarih` alanının yerine geçmez, ikisi birlikte doldurulabilir.
 
 ## Çıktı — `state/ozetler.json`
 
@@ -47,7 +67,14 @@ Yalnızca bu dosyayı yaz. Anahtar mailin `id`'si:
     "aksiyon": "Mülakat saatini teyit et",
     "son_tarih": "2026-09-13T00:00:00+03:00",
     "taslak": "state/taslaklar/mail-18f2a.md",
-    "proje": null
+    "proje": null,
+    "etkinlik": {
+      "baslik": "X Firması mülakatı",
+      "baslangic": "2026-03-12T14:00:00+03:00",
+      "saatli": true,
+      "yer": null,
+      "tur": "mulakat"
+    }
   }
 }
 ```

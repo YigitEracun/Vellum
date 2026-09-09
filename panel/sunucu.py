@@ -170,6 +170,7 @@ def toplu_durum():
         "tarama": tarama_durumu(),
         "bildirimler": bildirimleri_oku(),
         "sohbet": sohbet_gecmisi(),
+        "takvim": takvim_penceresi(),
         "mail": oku_json("state/inbox-digest.json", {}),
         "sosyal": oku_json("state/social-queue.json", {}),
         "ajanda": oku_json("state/agenda.json", {}),
@@ -254,6 +255,43 @@ def taslak_onayi(govde):
         "gonderildi": False,
         "mesaj": "Onaylandı ve kaydedildi. Gerçek gönderim için Gmail bağlantısı gerekiyor.",
     }
+
+
+def takvim_penceresi():
+    """Panelin ay degistirebilmesi icin yeterli araliktaki etkinlikler."""
+    try:
+        import takvim
+        return takvim.pencere()
+    except Exception:
+        return []
+
+
+def etkinlik_ekle(govde):
+    """Panelden elle etkinlik ekler."""
+    import takvim
+    try:
+        kayit = takvim.ekle(
+            baslik=govde.get("baslik"),
+            baslangic=govde.get("baslangic"),
+            saatli=govde.get("saatli", True),
+            yer=govde.get("yer"),
+            tur=govde.get("tur") or "diger",
+            kaynak="elle",
+        )
+    except ValueError as hata:
+        return {"hata": str(hata)}
+    return {"tamam": True, "etkinlik": kayit}
+
+
+def etkinlik_iptal(govde):
+    """Etkinliği takvimden kaldırır. Özgün satır durur, iptal satırı eklenir."""
+    import takvim
+    kimlik = (govde.get("id") or "").strip()
+    if not kimlik:
+        return {"hata": "Etkinlik kimliği yok."}
+    if not takvim.iptal_et(kimlik):
+        return {"hata": "Böyle bir etkinlik yok."}
+    return {"tamam": True}
 
 
 def mail_oku(mail_id):
@@ -507,6 +545,8 @@ ROTALAR = {
     "/api/onay": taslak_onayi,
     "/api/sohbet": sohbet,
     "/api/tarama": tarama,
+    "/api/etkinlik-ekle": etkinlik_ekle,
+    "/api/etkinlik-iptal": etkinlik_iptal,
 }
 
 

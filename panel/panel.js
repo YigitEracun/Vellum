@@ -149,10 +149,20 @@ function cizKunye() {
 
   let s = '<div class="marka"><span class="mim">V</span><span class="ad">Vellum</span></div>';
 
-  s += '<div class="gizle-mobil"><div class="kunye-baslik">Künye</div><div class="kunye-grup">' +
+  // Künye: üç toplayıcı ajan. Nokta "bu ajan orada" demek, o yüzden yalnızca
+  // ajanlarda var. Defter'in ajan olmayan sayfaları altta ayrı grupta durur.
+  s += '<div class="gizle-mobil gezinme"><div class="kunye-baslik">Künye</div><div class="kunye-grup">' +
     ajanSatiri('posta', 'n-mavi', 'Posta', onemliPosta) +
     ajanSatiri('mesaj', 'n-mavi', 'Mesaj', konusmalar.length) +
     ajanSatiri('ajanda', 'n-sari', 'Ajanda', etkinlikler.length) +
+    '</div></div>';
+
+  const bekleyenEtkinlik = (D.takvim || []).filter(e =>
+    (e.baslangic || '') >= D.simdi.slice(0, 10)).length;
+  s += '<div class="gizle-mobil gezinme"><div class="kunye-baslik">Defter</div><div class="kunye-grup">' +
+    ajanSatiri('projeler', null, 'Projeler', (D.projeler || []).length) +
+    ajanSatiri('takvim', null, 'Takvim', bekleyenEtkinlik) +
+    ajanSatiri('arsiv', null, 'Arşiv', (D.arsiv || []).length) +
     '</div></div>';
 
   const bugun = bugununEtkinlikleri();
@@ -173,14 +183,21 @@ function cizKunye() {
   const getirilen = acilMailler().length + bekleyenTaslaklar().length;
   s += '<div class="kunye-alt">Vellum son taramada ' + okunan + ' kayıt okudu, ' +
     getirilen + '’ini size getirdi.' +
-    '<button class="geri defter" onclick="defterAc(\'projeler\')">Defteri aç →</button></div>';
+    (gorunum === 'defter'
+      ? '<button class="geri defter" onclick="konusmayaDon()">← Konuşmaya dön</button>'
+      : '<button class="geri defter" onclick="defterAc(\'projeler\')">Defteri aç →</button>') +
+    '</div>';
 
   document.getElementById('kunye').innerHTML = s;
 }
 
+// `nokta` yoksa yerine görünmez bir dolgu konur: noktasız satırların metni de
+// noktalılarla aynı hizada başlar.
 function ajanSatiri(hedef, nokta, ad, sayi) {
-  return '<button class="ajan" onclick="defterAc(\'' + hedef + '\')">' +
-    '<span class="nokta ' + nokta + '"></span>' + ad +
+  const etkin = gorunum === 'defter' && defterOdak === hedef;
+  return '<button class="ajan' + (etkin ? ' etkin' : '') +
+    '" onclick="defterAc(\'' + hedef + '\')">' +
+    '<span class="nokta ' + (nokta || 'n-yok') + '"></span>' + ad +
     '<span class="sayi">' + sayi + '</span></button>';
 }
 
@@ -365,18 +382,15 @@ function cizDefter() {
   else if (defterOdak === 'arsiv') s += defterArsiv();
   else if (defterOdak === 'posta') s += defterPosta();
   else if (defterOdak === 'mesaj') s += defterMesaj();
+  else if (defterOdak === 'takvim') s += defterTakvim();
 
-  s += '<div class="etiketler" style="margin-top:30px">' +
-    ['projeler', 'posta', 'mesaj', 'ajanda', 'arsiv'].map(x =>
-      '<button class="etiket' + (defterOdak === x ? ' etkin' : '') +
-      '" onclick="defterAc(\'' + x + '\')">' + defterBasligi(x) + '</button>').join('') +
-    '</div>';
-
+  // Gezinme künyeye taşındı; alttaki etiket şeridi kaldırıldı.
   return s + '</div>';
 }
 
 function defterBasligi(hangi) {
-  const ad = { projeler: 'Projeler', ajanda: 'Ajanda', arsiv: 'Arşiv', posta: 'Posta', mesaj: 'Mesaj' };
+  const ad = { projeler: 'Projeler', takvim: 'Takvim', ajanda: 'Ajanda',
+    arsiv: 'Arşiv', posta: 'Posta', mesaj: 'Mesaj' };
   return ad[hangi || defterOdak] || 'Defter';
 }
 
@@ -536,6 +550,139 @@ function defterMesaj() {
   const spam = (D.sosyal && D.sosyal.elenen_spam) || 0;
   if (spam) s += '<p class="bos" style="margin-top:16px">' + spam + ' spam elendi.</p>';
   return s;
+}
+
+// ------------------------------------------------------------------ takvim
+
+// Gösterilen ay ve açık gün; ciz() bunları okur.
+let takvimAy = null;          // {yil, ay} — null ise bu ay
+let acikGun = null;           // 'YYYY-AA-GG'
+
+const gunAnahtari = (d) => d.getFullYear() + '-' +
+  String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+function takvimEtkinlikleri() {
+  return (D.takvim || []).slice().sort((a, b) => a.baslangic.localeCompare(b.baslangic));
+}
+
+function gununEtkinlikleri(anahtar) {
+  return takvimEtkinlikleri().filter(e => (e.baslangic || '').slice(0, 10) === anahtar);
+}
+
+function defterTakvim() {
+  const bugunD = new Date(D.simdi);
+  const yil = takvimAy ? takvimAy.yil : bugunD.getFullYear();
+  const ay = takvimAy ? takvimAy.ay : bugunD.getMonth();
+
+  // Pazartesi ile başlayan ızgara: JS'te 0 pazar, bizde 0 pazartesi olmalı.
+  const ilk = new Date(yil, ay, 1);
+  const dolgu = (ilk.getDay() + 6) % 7;
+  const gunSayisi = new Date(yil, ay + 1, 0).getDate();
+  const bugunAnahtar = gunAnahtari(bugunD);
+
+  let s = '<div class="takvim-baslik">' +
+    '<button class="geri" onclick="ayKaydir(-1)">‹</button>' +
+    '<span class="takvim-ay">' + AYLAR[ay] + ' ' + yil + '</span>' +
+    '<button class="geri" onclick="ayKaydir(0)">bugün</button>' +
+    '<button class="geri" onclick="ayKaydir(1)">›</button></div>';
+
+  s += '<div class="takvim">';
+  ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].forEach(g => {
+    s += '<div class="takvim-gunadi">' + g + '</div>';
+  });
+  for (let i = 0; i < dolgu; i++) s += '<div class="takvim-hucre bos-hucre"></div>';
+
+  for (let g = 1; g <= gunSayisi; g++) {
+    const anahtar = yil + '-' + String(ay + 1).padStart(2, '0') + '-' + String(g).padStart(2, '0');
+    const liste = gununEtkinlikleri(anahtar);
+    const sinif = ['takvim-hucre'];
+    if (anahtar === bugunAnahtar) sinif.push('bugun');
+    if (anahtar < bugunAnahtar) sinif.push('gecmis');
+    if (anahtar === acikGun) sinif.push('acik');
+    if (liste.length) sinif.push('dolu');
+
+    s += '<div class="' + sinif.join(' ') + '" onclick="gunAc(\'' + anahtar + '\')">' +
+      '<span class="takvim-gun">' + g + '</span>';
+    liste.slice(0, 2).forEach(e => {
+      s += '<span class="takvim-etkinlik">' +
+        (e.saatli === false ? '' : '<b>' + saat(e.baslangic) + '</b> ') +
+        kacir(kisalt(e.baslik, 18)) + '</span>';
+    });
+    if (liste.length > 2) {
+      s += '<span class="takvim-daha">+' + (liste.length - 2) + ' daha</span>';
+    }
+    s += '</div>';
+  }
+  s += '</div>';
+
+  s += gunPaneli(acikGun || bugunAnahtar);
+  return s;
+}
+
+// Seçili günün etkinlikleri ve ekleme formu.
+function gunPaneli(anahtar) {
+  const liste = gununEtkinlikleri(anahtar);
+  const [y, a, g] = anahtar.split('-');
+  let s = '<div class="gun-paneli"><p class="ayrac">' +
+    Number(g) + ' ' + AYLAR[Number(a) - 1] + ' ' + y + '</p>';
+
+  if (liste.length) {
+    s += '<div class="liste">';
+    liste.forEach(e => {
+      const kaynak = e.kaynak && e.kaynak.startsWith('mail:')
+        ? 'mail ' + e.kaynak.slice(5) + '’den çıkarıldı' : 'elle eklendi';
+      s += '<div class="liste-satir"><div class="govde">' +
+        '<p>' + (e.saatli === false ? '<b>gün boyu</b> ' : '<b>' + saat(e.baslangic) + '</b> ') +
+        kacir(e.baslik) + (e.yer ? ' · ' + kacir(e.yer) : '') + '</p>' +
+        '<p class="alt kaynak">' + kacir(kaynak) +
+        (e.tur && e.tur !== 'diger' ? ' · ' + kacir(e.tur) : '') + '</p></div>' +
+        '<button class="baglanti" onclick="etkinlikKaldir(\'' + kacir(e.id) + '\')">kaldır</button>' +
+        '</div>';
+    });
+    s += '</div>';
+  } else {
+    s += '<p class="bos">Bu güne kayıt yok.</p>';
+  }
+
+  s += '<div class="etkinlik-form">' +
+    '<input type="text" id="yeni-baslik" placeholder="Ne var?" ' +
+    'onkeydown="if(event.key===\'Enter\')etkinlikEkle(\'' + anahtar + '\')">' +
+    '<input type="time" id="yeni-saat" value="09:00">' +
+    '<button class="btn btn-primary" onclick="etkinlikEkle(\'' + anahtar + '\')">Ekle</button>' +
+    '</div></div>';
+  return s;
+}
+
+function ayKaydir(yon) {
+  const b = new Date(D.simdi);
+  if (yon === 0) { takvimAy = null; acikGun = gunAnahtari(b); return ciz(); }
+  const yil = takvimAy ? takvimAy.yil : b.getFullYear();
+  const ay = (takvimAy ? takvimAy.ay : b.getMonth()) + yon;
+  const d = new Date(yil, ay, 1);
+  takvimAy = { yil: d.getFullYear(), ay: d.getMonth() };
+  ciz();
+}
+
+function gunAc(anahtar) { acikGun = anahtar; ciz(); }
+
+async function etkinlikEkle(anahtar) {
+  const baslik = (document.getElementById('yeni-baslik') || {}).value || '';
+  const saatDegeri = (document.getElementById('yeni-saat') || {}).value || '09:00';
+  if (!baslik.trim()) return;
+  const r = await cagir('/api/etkinlik-ekle', {
+    baslik: baslik.trim(),
+    baslangic: anahtar + 'T' + saatDegeri + ':00+03:00',
+    saatli: true, tur: 'diger'
+  });
+  if (r.hata) { hataMetni = r.hata; return ciz(); }
+  acikGun = anahtar;
+  await yenile();
+}
+
+async function etkinlikKaldir(id) {
+  const r = await cagir('/api/etkinlik-iptal', { id: id });
+  if (r.hata) { hataMetni = r.hata; return ciz(); }
+  await yenile();
 }
 
 function defterAjanda() {
@@ -765,6 +912,7 @@ function veriImzasi(d) {
     d.ham_cekildi, d.brifing_zamani, maddeler.length, enYuksek,
     (d.bildirimler || []).length,
     (d.sohbet || []).length,
+    (d.takvim || []).length,
     ((d.sosyal && d.sosyal.konusmalar) || []).length,
     ((d.ajanda && d.ajanda.etkinlikler) || []).length,
     (d.projeler || []).length,

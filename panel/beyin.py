@@ -396,6 +396,43 @@ def _json_oku(gorece, varsayilan=None):
         return varsayilan
 
 
+def etkinlikleri_takvime_dus():
+    """mail-agent'in urettigi etkinlikleri takvime yazar.
+
+    Ajan yalnizca ozet uretir; takvime yazma kararini sistem verir. Ayni mail
+    iki taramada da gorulse etkinlik bir kez girer, kullanici kaldirdiysa geri
+    gelmez — kontrol takvim.mailden_ekle icinde.
+    """
+    import takvim
+    eklenen = 0
+
+    # 1) Ajanın açıkça ürettiği etkinlikler (toplantı, mülakat, görüşme).
+    for mail_id, kayit in (_json_oku("state/ozetler.json") or {}).items():
+        if not isinstance(kayit, dict):
+            continue
+        e = kayit.get("etkinlik")
+        if e and takvim.mailden_ekle(mail_id, e):
+            eklenen += 1
+
+    # 2) Son tarihler. Randevu değil iştir, ama takvimde görünmesi gerekir —
+    #    ayrı bir kaynak anahtarıyla girer ki aynı mailin etkinliğini engellemesin.
+    for m in (_json_oku("state/inbox-digest.json") or {}).get("maddeler", []):
+        son = m.get("son_tarih")
+        if not son:
+            continue
+        kaynak = "mail:%s#son_tarih" % m.get("id")
+        if takvim.kaynak_var_mi(kaynak):
+            continue
+        kayit = takvim.mailden_ekle(kaynak[5:], {
+            "baslik": m.get("konu") or "(konusuz)",
+            "baslangic": son,
+            "tur": "son_tarih",
+        })
+        if kayit:
+            eklenen += 1
+    return eklenen
+
+
 def ozetlenecek_yaz(bekleyen):
     """Modele gidecek mailleri gövdeleriyle birlikte tek küçük dosyaya yazar.
 
@@ -536,4 +573,5 @@ def brief(ilerleme=None):
         "hiç açma. persona.md içindeki brifing formatına uy. Yalnızca brifing metnini dön.",
         OKUMA_ARACLARI,
     )
+    etkinlikleri_takvime_dus()
     return {"brifing": brifing, "agentlar": sonuclar}
