@@ -76,7 +76,7 @@ assistant/
 │   ├── beyin.py               # Çekirdek + agent'lar (Claude API)
 │   ├── panel.html             # "Tek Ağız" yerleşimi
 │   ├── panel.js
-│   └── _ds/broadsheet/        # tasarım sistemi (styles.css)
+│   └── _ds/fluent2/           # tasarım sistemi (tokens.css)
 ├── tasarım/                   # Claude Design kaynağı (.dc.html + _ds)
 ├── bot/
 │   └── telegram_bot.py        # panelin uzaktan kolu
@@ -365,7 +365,7 @@ Projeyi sen açarsın; agent kendi başına yeni proje yaratmaz, yalnızca öner
 
 ---
 
-## 10. Arayüz — "Tek Ağız" (Broadsheet)
+## 10. Arayüz — "Tek Ağız" (Fluent 2)
 
 Arayüz bir gösterge tablosu değil, **bir konuşma**. Claude Design'da üç yön çizildi
 (Sabah Baskısı · Tezgâh · Tek Ağız) ve **1c "Tek Ağız"** seçildi:
@@ -374,9 +374,14 @@ Arayüz bir gösterge tablosu değil, **bir konuşma**. Claude Design'da üç y�
 > satır satır verilir. Solda ince bir künye ajanların hâlâ orada olduğunu söyler.
 
 Tasarım kaynağı: `tasarım/Kâtip - Ekran Yönleri.dc.html` (satır 252–346).
-Tasarım sistemi **Broadsheet** — gazete dizgisi: Source Serif 4, kağıt zemini,
-camgöbeği ve magenta noktasal vurgu, **kutu ve çizgi yok**; hiyerarşi seriften ve
-boşluktan gelir.
+Tasarım sistemi **Microsoft Fluent 2 Web** — Segoe UI, beyaz yüzey, `#0f6cbd` marka
+rengi, 4 px yarıçap, girdide odakta 2 px marka alt şeridi, kartlarda yükseklik gölgesi.
+Token'lar `microsoft/fluentui` kaynağından alındı.
+
+Bu ikinci tasarım dili. İlk hâli **Broadsheet**'ti — gazete dizgisi, Source Serif 4,
+kağıt zemini, kutu ve çizgi yok. Yerleşim beğenildiği için aynen korundu; değişen
+yalnızca öğelerin görünüşü. Broadsheet stylesheet'i `tasarım/` altındaki `.dc.html`
+kaynakları ona baktığı için diskte duruyor, panel artık yüklemiyor.
 
 ```
 ┌──────────────┬───────────────────────────────────────────┐
@@ -406,22 +411,25 @@ boşluktan gelir.
 satıra sığmıyorsa kırpılır; `Değiştir` tam metni dialogda açar. Onay sonucu konuşmaya
 kâtibin cevabı olarak düşer.
 
-**Künye** sol kolonda: üç ajanın sayıları (Posta/Mesaj camgöbeği, Ajanda proses sarısı),
+**Künye** sol kolonda: ajanların sayıları (Posta ve Mesaj, marka renginde rozet),
 bugünün saatleri, ve "Vellum son taramada N kayıt okudu, M'ini size getirdi" cümlesi.
 Ajanlar görünmez ama varlıkları burada duyulur.
 
 **Defter** — gösterge tablosu buraya taşındı. Künyeden veya "Defteri aç" ile girilir,
 "← Konuşmaya dön" ile çıkılır; konuşma durumu kaybolmaz. İçinde: Projeler (canlı özet +
 12 haftalık aktivite şeridi → tıklayınca serbest zaman çizelgesi, kilometre taşları
-belirgin, onaylanmamış olaylar soluk, etiket süzgeci), Posta, Mesaj, Ajanda, Arşiv.
+belirgin, onaylanmamış olaylar soluk, etiket süzgeci), Takvim, Posta, Mesaj, Arşiv.
+Bu bölümler sonradan alt şeritten sidebar'a taşındı; Ajanda bölümü ise takvim gelince
+aynı işi iki yerde gösterdiği için kaldırıldı.
 
-**Karanlık tema yok.** Broadsheet readme'si "bu sistem koyu yüzey göstermez" diyor;
-tasarıma sadık kalmak için tek kağıt teması kullanılıyor. Bilerek verilmiş bir karar.
+**Karanlık tema yok.** Fluent 2'nin nötr rampası koyu yüzeyi mümkün kılar, ama
+uygulanmadı — ayrı bir iş. Tek açık tema kullanılıyor.
 
 **Mobil**: 760px altında künye yatay şeride iner, onaylar dikey yığılır, düğmeler 44px.
 
-Dosyalar: `panel/panel.html` (yerleşim), `panel/panel.js` (çizim ve durum),
-`panel/_ds/broadsheet/styles.css` (tasarım sistemi, olduğu gibi kopyalandı).
+Dosyalar: `panel/panel.html` (yerleşim ve bileşen kuralları), `panel/panel.js` (çizim
+ve durum), `panel/_ds/fluent2/tokens.css` (tasarım sistemi). Token'lar Broadsheet'ten
+devralınan adlarla yayımlanıyor, böylece mevcut kurallar dokunmadan yeni değerlere geçti.
 
 ### 10.0 Karar: Claude Code yerine Claude API
 
@@ -576,7 +584,7 @@ basınca haberdar olunuyordu.
   izleme bedavadır.
 - Yeni mail yalnızca bildirilmez, **sisteme de düşer**: `gmail.json`, `arsiv.jsonl` ve
   digest güncellenir. Bildirim tek başına yetmez — mail Posta listesinde de görünmeli.
-- Bildirim kendi çizdiğimiz **Broadsheet kartıdır** (`scripts/kart.py`), Windows'un kutusu
+- Bildirim kendi çizdiğimiz **Fluent kartıdır** (`scripts/kart.py`), Windows'un kutusu
   değil. Ayrı bir süreçte açılır: Tkinter çağrıları tek iş parçacığında kalmak zorunda,
   sunucunun içinden pencere açmak kırılgan olurdu. Kart çizilemezse Windows bildirimine
   düşülür; izleyici hiçbir durumda durmaz.

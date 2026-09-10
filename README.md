@@ -137,9 +137,13 @@ kâtibin günün ilk mesajı olarak gelir; onaylar sohbetin içinde satır satı
 └──────────────┴────────────────────────────────────┘
 ```
 
-Tasarım [Claude Design](https://claude.ai/design)'da hazırlandı; tasarım sistemi
-**Broadsheet** — gazete dizgisi: Source Serif 4, kağıt zemini, camgöbeği ve magenta
-noktasal vurgu, kutu ve çerçeve yok.
+Yerleşim [Claude Design](https://claude.ai/design)'da hazırlandı; öğelerin görünüşü
+**Microsoft Fluent 2 Web** — Segoe UI, beyaz yüzey, 4 px yarıçap, `#0f6cbd` marka rengi,
+girdilerde odakta marka alt şeridi, kartlarda yükseklik gölgesi.
+
+Proje önce **Broadsheet** (gazete dizgisi, Source Serif 4, kutu yok) ile çizilmişti;
+tasarım dili Fluent 2 ile değiştirildi. Broadsheet stylesheet'i `tasarım/` altındaki
+`.dc.html` kaynakları için diskte duruyor, panel artık onu yüklemiyor.
 
 Gösterge tablosu (projeler, zaman çizelgesi, arşiv) **Defter** görünümünde durur.
 
@@ -247,12 +251,12 @@ python scripts/seed_ornek_veri.py
 │   ├── skorlama.py        kural motoru — önem skorlaması, modelsiz
 │   ├── panel.html         arayüz yerleşimi
 │   ├── panel.js
-│   └── _ds/broadsheet/    tasarım sistemi
+│   └── _ds/fluent2/      tasarım sistemi (Fluent 2 token'ları)
 └── scripts/
     ├── gmail_fetch.py      Gmail → state/raw/gmail.json (IMAP, salt okuma)
     ├── instagram_fetch.py  Instagram DM → state/raw/instagram.json
     ├── izleyici.py         canlı izleyici: yeni maili yakalar, bildirir
-    ├── kart.py             Broadsheet bildirim kartı (masaüstü pop-up)
+    ├── kart.py             Fluent bildirim kartı (masaüstü pop-up)
     ├── test_skorlama.py    kural motorunun birim testleri
     └── seed_*.py           demo verisi
 ```
@@ -322,11 +326,12 @@ sıralama daima ham skora göre yapılır — aksi halde 140 puanlık bir sözle
   tahminlerdir.
 - Taranmış (görüntü) PDF eklerinden metin çıkmaz; sistem bu durumda tahmin yürütmez,
   kullanıcıya bildirir.
-- Karanlık tema yoktur: Broadsheet koyu yüzey tanımlamıyor, tek kağıt teması kullanılıyor.
+- Karanlık tema yoktur: Fluent 2'nin nötr rampası buna elverir ama uygulanmadı; tek
+  açık tema var.
 - Bildirim kartı Windows Bildirim Merkezi'ne iz bırakmaz — ekran başında değilken kaçırılan
   kart orada bulunamaz, ama panelde bildirim listesinde durmaya devam eder.
-- Masaüstü kartı Source Serif kuruluysa onu, değilse Georgia'yı kullanır; tarayıcıdaki
-  panel yazıtipini Google Fonts'tan çeker, masaüstü penceresi çekemez.
+- Masaüstü kartının köşesi diktir: Tkinter'da `overrideredirect` pencere yuvarlatılamıyor,
+  paneldeki kartlar 8 px yarıçaplı olduğu hâlde bu kart öyle değil.
 - Canlı izleme panel sunucusuyla birlikte çalışır; panel kapanınca izleme de durur.
 
 ---
