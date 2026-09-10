@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Vellum bildirim kartı — Broadsheet dizgisinde masaüstü pop-up'ı.
+"""Vellum bildirim kartı — Fluent 2 dizgisinde masaüstü pop-up'ı.
 
-Windows'un kendi bildirim kutusu yerine kendi penceremizi çizeriz: kağıt zemin,
-Source Serif, camgöbeği şerit. Panelle aynı dili konuşur.
+Windows'un kendi bildirim kutusu yerine kendi penceremizi çizeriz: beyaz yüzey,
+Segoe UI, solda marka şeridi — panelle aynı Fluent 2 dilini konuşur.
+
+Not: Tkinter'da `overrideredirect` pencerenin köşesi yuvarlatılamaz, o yüzden kart
+dik köşeli kalır. Fluent'in geri kalanı (renk, tipografi, boşluk) uygulanır.
 
 Ayrı bir süreç olarak çalışır. Tkinter'ın tüm çağrıları tek bir iş parçacığında
 kalmak zorunda; sunucunun içinden çağırmak yerine kısa ömürlü bir süreç açmak
@@ -18,13 +21,13 @@ import argparse
 import sys
 import webbrowser
 
-# Broadsheet paleti — panel/_ds/broadsheet/styles.css ile aynı değerler.
-KAGIT = "#f8f4f4"
-MUREKKEP = "#2d2b2b"
-SOLGUN = "#605d5d"
-CAMGOBEGI = "#006786"
-MAGENTA = "#d6006c"
-CIZGI = "#d7d3d3"
+# Fluent 2 paleti — panel/_ds/fluent2/tokens.css ile aynı değerler.
+KAGIT = "#ffffff"      # colorNeutralBackground1
+MUREKKEP = "#242424"   # colorNeutralForeground1
+SOLGUN = "#616161"     # colorNeutralForeground3
+MARKA = "#0f6cbd"      # colorBrandBackground
+MARKA_KOYU = "#0f548c"
+CIZGI = "#d1d1d1"      # colorNeutralStroke1
 
 PANEL_ADRESI = "http://127.0.0.1:8787"
 SURE_MS = 8000          # kart ekranda ne kadar kalır
@@ -33,10 +36,10 @@ KENAR_BOSLUGU = 24      # ekran kenarına uzaklık
 
 
 def yazitipi(kok, boyut, kalin=False):
-    """Source Serif varsa onu, yoksa sistemin serif yazıtipini kullanır."""
+    """Segoe UI varsa onu, yoksa sistemin sans yazıtipini kullanır."""
     from tkinter import font
     mevcut = set(font.families(kok))
-    for ad in ("Source Serif 4", "Source Serif Pro", "Georgia", "Times New Roman"):
+    for ad in ("Segoe UI Variable Text", "Segoe UI", "Segoe UI Semibold", "Arial"):
         if ad in mevcut:
             return (ad, boyut, "bold" if kalin else "normal")
     return ("TkDefaultFont", boyut, "bold" if kalin else "normal")
@@ -68,8 +71,8 @@ def goster(baslik, alt="", ust="ÖNEMLİ MAİL", rozet="",
     govde = tk.Frame(kart, bg=KAGIT)
     govde.place(x=1, y=1, width=GENISLIK - 2, height=YUKSEKLIK - 2)
 
-    # Solda camgöbeği şerit — panelde de kutular böyle işaretleniyor.
-    tk.Frame(govde, bg=CAMGOBEGI, width=3).place(x=0, y=0, relheight=1)
+    # Solda marka şeridi — Fluent MessageBar ile aynı işaret.
+    tk.Frame(govde, bg=MARKA, width=4).place(x=0, y=0, relheight=1)
 
     ic = tk.Frame(govde, bg=KAGIT)
     ic.place(x=17, y=13, width=GENISLIK - 36, height=YUKSEKLIK - 28)
@@ -82,7 +85,7 @@ def goster(baslik, alt="", ust="ÖNEMLİ MAİL", rozet="",
     tk.Label(ust, text=ust_metni, bg=KAGIT, fg=SOLGUN,
              font=yazitipi(kok, 8)).pack(side="left", padx=(8, 0))
     if rozet:
-        tk.Label(ust, text=str(rozet), bg=KAGIT, fg=MAGENTA,
+        tk.Label(ust, text=str(rozet), bg=KAGIT, fg=MARKA_KOYU,
                  font=yazitipi(kok, 9, True)).pack(side="right")
 
     tk.Label(ic, text=kisalt(baslik, 62), bg=KAGIT, fg=MUREKKEP, justify="left",
@@ -90,7 +93,7 @@ def goster(baslik, alt="", ust="ÖNEMLİ MAİL", rozet="",
              font=yazitipi(kok, 12, True)).pack(fill="x", pady=(9, 0))
     tk.Label(ic, text=kisalt(alt, 52), bg=KAGIT, fg=SOLGUN, anchor="w",
              font=yazitipi(kok, 9)).pack(fill="x", pady=(4, 0))
-    tk.Label(ic, text="panele git →", bg=KAGIT, fg=CAMGOBEGI, anchor="w",
+    tk.Label(ic, text="panele git →", bg=KAGIT, fg=MARKA, anchor="w",
              font=yazitipi(kok, 9)).pack(fill="x", pady=(7, 0))
 
     def kapat(_=None):

@@ -1,0 +1,250 @@
+/* Fluent 2 Web — token katmanı ve taban bileşenler.
+   Değerler microsoft/fluentui kaynağından alınmıştır (grey ve brandWeb rampaları,
+   borderRadius, fonts, shadows).
+
+   Token adları Broadsheet'ten devralındı (--color-text, --space-4 …) ki panel.html
+   içindeki mevcut kurallar dokunmadan doğru değere geçsin. Fluent'e özgü olanlar
+   (--radius-*, --shadow-*, --brand-*) yeni. */
+
+:root {
+  /* --- marka: brandWeb rampası --- */
+  --brand-60:  #0f548c;   /* basılı */
+  --brand-70:  #115ea3;   /* hover */
+  --brand-80:  #0f6cbd;   /* birincil */
+  --brand-100: #479ef5;
+  --brand-140: #b4d6fa;
+  --brand-150: #cfe4fa;   /* seçili kenarlık */
+  --brand-160: #ebf3fc;   /* seçili zemin */
+
+  /* --- nötr: grey rampası --- */
+  --grey-14: #242424;
+  --grey-26: #424242;
+  --grey-38: #616161;
+  --grey-50: #808080;
+  --grey-74: #bdbdbd;
+  --grey-82: #d1d1d1;
+  --grey-88: #e0e0e0;
+  --grey-94: #f0f0f0;
+  --grey-96: #f5f5f5;
+  --grey-98: #fafafa;
+
+  /* --- anlamsal: metin --- */
+  --color-text:            var(--grey-14);
+  --color-neutral-900:     var(--grey-14);
+  --color-neutral-800:     var(--grey-26);
+  --color-neutral-700:     var(--grey-38);
+  --color-neutral-600:     var(--grey-38);
+  --color-neutral-500:     var(--grey-50);
+  --color-neutral-400:     var(--grey-74);
+  --color-neutral-300:     var(--grey-82);
+  --color-neutral-200:     var(--grey-88);
+  --color-neutral-100:     var(--grey-96);
+  --color-disabled:        var(--grey-74);
+
+  /* --- anlamsal: zemin --- */
+  --color-bg:              #ffffff;
+  --color-surface:         var(--grey-98);
+  --color-surface-2:       var(--grey-96);
+  --color-subtle-hover:    var(--grey-96);
+  --color-subtle-pressed:  #ebebeb;
+
+  /* --- anlamsal: çizgi --- */
+  --color-stroke:          var(--grey-82);   /* kontrol kenarlığı */
+  --color-divider:         var(--grey-88);   /* bölücü */
+  --color-stroke-subtle:   var(--grey-94);
+
+  /* --- vurgu (Broadsheet adlarıyla) --- */
+  --color-accent:          var(--brand-80);
+  --color-accent-100:      var(--brand-160);
+  --color-accent-200:      var(--brand-150);
+  --color-accent-500:      var(--brand-100);
+  --color-accent-600:      var(--brand-70);
+  --color-accent-700:      var(--brand-80);
+  --color-accent-800:      var(--brand-60);
+  --color-process-yellow:  #f7630c;          /* Fluent turuncu: ajanda noktası */
+
+  /* Broadsheet'in ikinci vurgusu magenta idi; Fluent'te durum renkleri var. */
+  --color-accent-2:        #c50f1f;
+  --color-accent-2-100:    #fdf3f4;
+  --color-accent-2-700:    #b10e1c;
+  --color-accent-2-800:    #960b18;
+  --color-basari:          #0e700e;
+
+  /* --- yarıçap --- */
+  --radius-none: 0;
+  --radius-sm:   2px;
+  --radius-md:   4px;
+  --radius-lg:   6px;
+  --radius-xl:   8px;
+  --radius-2xl:  12px;
+  --radius-circular: 10000px;
+
+  /* --- gölge (elevation) --- */
+  --shadow-2:  0 1px 2px rgba(0,0,0,.14),  0 0 2px rgba(0,0,0,.12);
+  --shadow-4:  0 2px 4px rgba(0,0,0,.14),  0 0 2px rgba(0,0,0,.12);
+  --shadow-8:  0 4px 8px rgba(0,0,0,.14),  0 0 2px rgba(0,0,0,.12);
+  --shadow-16: 0 8px 16px rgba(0,0,0,.14), 0 0 2px rgba(0,0,0,.12);
+  --shadow-64: 0 32px 64px rgba(0,0,0,.24), 0 0 8px rgba(0,0,0,.2);
+
+  /* --- tipografi --- */
+  --font-body: "Segoe UI Variable Text", "Segoe UI", -apple-system,
+               BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+  --font-heading: "Segoe UI Variable Display", "Segoe UI", -apple-system,
+                  BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: Consolas, "Courier New", Courier, monospace;
+  --font-heading-weight: 600;
+
+  --fs-100: 10px;  --lh-100: 14px;
+  --fs-200: 12px;  --lh-200: 16px;
+  --fs-300: 14px;  --lh-300: 20px;   /* gövde */
+  --fs-400: 16px;  --lh-400: 22px;
+  --fs-500: 20px;  --lh-500: 28px;
+  --fs-600: 24px;  --lh-600: 32px;
+  --fs-700: 28px;  --lh-700: 36px;
+  --fs-800: 32px;  --lh-800: 40px;
+
+  /* --- boşluk --- */
+  --space-1: 2px;   --space-2: 4px;   --space-3: 8px;   --space-4: 12px;
+  --space-5: 16px;  --space-6: 20px;  --space-7: 24px;  --space-8: 32px;
+
+  --gecis: 100ms cubic-bezier(0.33, 0, 0.67, 1);   /* Fluent: hızlı, doğrusal-ötesi */
+}
+
+/* ------------------------------------------------------------------ taban */
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--fs-300);
+  line-height: var(--lh-300);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  margin: 0;
+}
+
+/* Odak göstergesi Fluent'in en belirgin erişilebilirlik özelliği: her
+   etkileşimli öğede aynı halka. :focus-visible — fareyle tıklayanı rahatsız
+   etmez, klavyeyle gezineni yalnız bırakmaz. */
+:focus-visible {
+  outline: 2px solid var(--brand-80);
+  outline-offset: 1px;
+  border-radius: var(--radius-md);
+}
+
+/* --------------------------------------------------------------- düğmeler */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 32px; padding: 0 12px;
+  font-family: var(--font-body); font-size: var(--fs-300); line-height: var(--lh-300);
+  font-weight: 600;
+  color: var(--color-text); background: var(--color-bg);
+  border: 1px solid var(--color-stroke); border-radius: var(--radius-md);
+  cursor: pointer; text-decoration: none;
+  transition: background var(--gecis), border-color var(--gecis);
+}
+.btn:hover { background: var(--color-subtle-hover); }
+.btn:active { background: var(--color-subtle-pressed); }
+.btn:disabled { color: var(--color-disabled); background: var(--color-surface-2);
+                border-color: var(--color-stroke-subtle); cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--brand-80); color: #ffffff; border-color: transparent;
+}
+.btn-primary:hover  { background: var(--brand-70); }
+.btn-primary:active { background: var(--brand-60); }
+.btn-primary:disabled { background: var(--grey-94); color: var(--color-disabled); }
+
+.btn-secondary { background: var(--color-bg); }
+
+/* Fluent "subtle": kenarlıksız, yalnız hover'da zemin alır. */
+.btn-ghost, .btn-subtle {
+  background: transparent; border-color: transparent; color: var(--color-neutral-800);
+}
+.btn-ghost:hover, .btn-subtle:hover { background: var(--color-subtle-hover); }
+
+/* ----------------------------------------------------------------- girdiler */
+
+.input, input[type="text"], input[type="number"], input[type="time"], textarea {
+  min-height: 32px; padding: 0 10px;
+  font-family: var(--font-body); font-size: var(--fs-300); line-height: var(--lh-300);
+  color: var(--color-text); background: var(--color-bg);
+  /* Uzun yazım: `border: 1px solid var(--…)` kısayolu var() içerdiğinde bekleyen
+     değer olarak işleniyor ve odak kuralının alt kenar rengini eziyordu. */
+  border-style: solid; border-width: 1px;
+  border-top-color: var(--color-stroke);
+  border-right-color: var(--color-stroke);
+  border-left-color: var(--color-stroke);
+  border-bottom-color: var(--grey-50);   /* Fluent: alt kenar bir ton koyu */
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color var(--gecis);
+}
+.input:hover, input[type="text"]:hover, input[type="number"]:hover,
+input[type="time"]:hover, textarea:hover { border-bottom-color: var(--grey-38); }
+
+/* Fluent'in imzası: odakta alt kenar 2 px marka rengine döner. */
+/* Kenar renkleri uzun yazımla veriliyor: `border-color` kısayolu var() içerdiğinde
+   bekleyen-değer olarak işleniyor ve sonraki `border-bottom` kısayolunun rengini
+   eziyor — alt şerit 2 px oluyor ama gri kalıyordu. */
+.input:focus, input[type="text"]:focus, input[type="number"]:focus,
+input[type="time"]:focus, textarea:focus {
+  border-top-color: var(--color-stroke);
+  border-right-color: var(--color-stroke);
+  border-left-color: var(--color-stroke);
+  border-bottom-width: 2px;
+  border-bottom-style: solid;
+  border-bottom-color: var(--brand-80);
+  padding-bottom: 0;
+}
+.input::placeholder, input::placeholder { color: var(--color-neutral-600); }
+
+/* ------------------------------------------------------------------ diğer */
+
+/* ---------------------------------------------------------------- pencere */
+
+/* Fluent Dialog: shadow64, 8 px yarıçap, koyu perde. */
+.dialog-backdrop {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  padding: var(--space-5);
+  background: rgba(0, 0, 0, .4);
+  z-index: 100;
+}
+.dialog {
+  width: min(440px, 100%);
+  display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-7);
+  background: var(--color-bg);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-64);
+}
+.dialog-title {
+  font-family: var(--font-heading); font-weight: 600;
+  font-size: var(--fs-500); line-height: var(--lh-500);
+}
+.dialog-body {
+  font-size: var(--fs-300); line-height: var(--lh-300);
+  color: var(--color-neutral-800);
+}
+.dialog-actions {
+  display: flex; justify-content: flex-end; gap: var(--space-3);
+}
+
+.rozet, .badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 8px;
+  font-size: var(--fs-200); line-height: var(--lh-200); font-weight: 600;
+  color: var(--brand-60); background: var(--brand-160);
+  border-radius: var(--radius-circular);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
