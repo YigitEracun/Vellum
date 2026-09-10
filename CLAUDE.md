@@ -25,7 +25,6 @@ Kimliğin ve ses tonun: `config/persona.md`. Her yanıttan önce onu esas al.
 | `state/raw/` | Fetch scriptlerinin bıraktığı ham veri (agent girdisi) |
 | `state/inbox-digest.json` | mail-agent çıktısı |
 | `state/social-queue.json` | social-agent çıktısı |
-| `state/agenda.json` | calendar-agent çıktısı |
 | `state/taslaklar/` | Onay bekleyen cevaplar |
 | `state/log/` | Geçmiş brifingler |
 | `projects/<ad>/olaylar.jsonl` | Append-only olay günlüğü |
@@ -40,7 +39,6 @@ altına bırakır. Sen yalnızca alt agent'ları çağırır, çıktılarını h
 
 - `mail-agent` — `state/raw/gmail.json` okur, skorlar, `inbox-digest.json` yazar
 - `social-agent` — `state/raw/instagram.json` okur, `social-queue.json` yazar
-- `calendar-agent` — `state/raw/calendar.json` okur, `agenda.json` yazar
 - `proje-agent` — üç çıktıyı okur, projelere olay önerir, `durum.json` türetir
 
 Sıra: üç toplayıcı paralel → sonra `proje-agent` → sonra sen harmanlarsın.

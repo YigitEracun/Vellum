@@ -248,9 +248,11 @@ Gönderme yetkisi yalnızca Çekirdek'te. Alt agent'ların gönderim araçların
 | **5** | Proje hafızası: olay günlüğü, durum türetme, diğer agent'ların olay yazması | Faz 1–2 | 1 oturum |
 | **6** | Telegram bot: bildirim, butonlu onay akışı (panelin uzaktan kolu) | Faz 4 | kısa |
 | **7** | Birleşik panel: `sunucu.py` + tek ekran arayüz + gömülü sohbet | Faz 5 | 1–2 oturum |
-| **8** | Instagram DM — Meta app, Business hesap bağlama, App Review başvurusu | Meta onayı (dış) | değişken |
+| **8** | Instagram DM — Meta app, profesyonel hesap bağlama | Profesyonel Instagram hesabı | 1 oturum |
 
-**Neden Instagram en sonda:** tek dış onay bağımlılığı orada. Diğer fazlar bittiğinde sistem zaten çalışır durumda olur; Meta onayı geldiğinde `social-agent` fişe takılır, mimaride değişiklik gerekmez.
+**Not (2026-09-09):** Bu varsayım artık geçerli değil. "Instagram API with Instagram Login" ile Facebook Sayfası gerekmiyor ve **kendi hesabınız için App Review de gerekmiyor** — uygulama geliştirme modundayken, uygulamada rolü olan hesabın verisine erişilebiliyor. App Review ancak başkalarının hesaplarını yöneten bir ürün yayımlarken şart. Tek gerçek koşul hesabın profesyonel (İşletme/Kreatör) olması; kişisel hesap bu API'yi kullanamıyor ve profesyonel hesaplar gizli olamıyor.
+
+**Neden Instagram yine de sonda kaldı:** dış bir hesap türü değişikliği gerektiriyor. Diğer fazlar bittiğinde sistem zaten çalışır durumda olur; Meta onayı geldiğinde `social-agent` fişe takılır, mimaride değişiklik gerekmez.
 
 ---
 

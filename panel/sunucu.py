@@ -174,7 +174,6 @@ def toplu_durum():
         "konular": konular_durumu(),
         "mail": oku_json("state/inbox-digest.json", {}),
         "sosyal": oku_json("state/social-queue.json", {}),
-        "ajanda": oku_json("state/agenda.json", {}),
         "projeler": projeler,
         "oneriler": oku_json("projects/_oneriler.json", {"oneriler": []}),
         "arsiv": arsiv[:30],
@@ -609,6 +608,20 @@ def ham_veri_cek(adimlar):
     except Exception as hata:
         adimlar.append("Gmail cekilemedi (%s: %s) — eldeki son veriyle devam."
                        % (type(hata).__name__, hata))
+
+    # Instagram bagli degilse sessizce atlanir: kurulmamis bir kaynak hata degil.
+    if os.path.exists(os.path.join(KOK, "secrets", "instagram_token.json")):
+        adimlar.append("Instagram cekiliyor…")
+        try:
+            import instagram_fetch
+            ig = instagram_fetch.cek()
+            instagram_fetch.yaz(ig)
+            adimlar.append("Instagram: %d konusma cekildi." % len(ig["konusmalar"]))
+        except SystemExit as hata:
+            adimlar.append("Instagram cekilemedi: %s" % " ".join(str(hata).split()))
+        except Exception as hata:
+            adimlar.append("Instagram cekilemedi (%s: %s) — eldeki son veriyle devam."
+                           % (type(hata).__name__, hata))
 
 
 # Sunucu cok is parcacikli; iki "simdi tara" ayni anda gelebilir. Ikisi de ayni

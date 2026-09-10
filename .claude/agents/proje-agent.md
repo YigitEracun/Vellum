@@ -9,7 +9,7 @@ Kullanıcıya hitap etme. Yalnızca dosya yaz.
 
 ## Girdi
 
-`state/inbox-digest.json`, `state/social-queue.json`, `state/agenda.json` ve
+`state/inbox-digest.json`, `state/social-queue.json` ve
 `projects/` altındaki mevcut proje dosyaları.
 
 ## En önemli kural: geçmiş silinmez

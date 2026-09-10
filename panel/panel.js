@@ -8,7 +8,7 @@ const GUNLER = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'
 
 let D = null;                 // /api/durum çıktısı
 let gorunum = 'konusma';      // 'konusma' | 'defter'
-let defterOdak = 'projeler';  // 'projeler' | 'ajanda' | 'arsiv' | 'posta' | 'mesaj'
+let defterOdak = 'projeler';  // 'projeler' | 'takvim' | 'konular' | 'posta' | 'mesaj' | 'arsiv'
 let acikProje = null;
 let etiketSuzgeci = null;
 let sohbetGecmisi = [];
@@ -126,9 +126,11 @@ function acilMailler() {
     .sort((a, b) => ham(b) - ham(a));
 }
 
+// Künyedeki "Bugün" bloğu Takvim'den beslenir. Eskiden ayrı bir Ajanda
+// kaynağına bakıyordu; o sayfa kaldırıldı, tek takvim kaldı.
 function bugununEtkinlikleri() {
-  return ((D.ajanda && D.ajanda.etkinlikler) || [])
-    .filter(e => gunFarki(e.baslangic) === 0)
+  return (D.takvim || [])
+    .filter(e => e.baslangic && gunFarki(e.baslangic) === 0)
     .sort((a, b) => a.baslangic.localeCompare(b.baslangic));
 }
 
@@ -144,7 +146,6 @@ function sessizProjeler() {
 function cizKunye() {
   const mailler = (D.mail && D.mail.maddeler) || [];
   const konusmalar = (D.sosyal && D.sosyal.konusmalar) || [];
-  const etkinlikler = (D.ajanda && D.ajanda.etkinlikler) || [];
   const onemliPosta = mailler.filter(m => ham(m) >= 40).length;
 
   let s = '<div class="marka"><span class="mim">V</span><span class="ad">Vellum</span></div>';
@@ -154,7 +155,6 @@ function cizKunye() {
   s += '<div class="gizle-mobil gezinme"><div class="kunye-baslik">Künye</div><div class="kunye-grup">' +
     ajanSatiri('posta', 'n-mavi', 'Posta', onemliPosta) +
     ajanSatiri('mesaj', 'n-mavi', 'Mesaj', konusmalar.length) +
-    ajanSatiri('ajanda', 'n-sari', 'Ajanda', etkinlikler.length) +
     '</div></div>';
 
   const bekleyenEtkinlik = (D.takvim || []).filter(e =>
@@ -225,7 +225,7 @@ function cizKonusma() {
     s += brifingDamgasi() + brifingiCiz(D.bugunun_brifingi);
   } else {
     s += '<p class="gun-cumlesi">' + selam + '. Bugün için henüz tarama yapılmadı.</p>' +
-      '<p class="ses">Postayı, mesajları ve ajandayı taramamı istersen yukarıdaki ' +
+      '<p class="ses">Postayı, mesajları ve takvimi taramamı istersen yukarıdaki ' +
       '“şimdi tara”ya bas — dört ajan çalışır, günün özetini buraya yazarım.</p>';
   }
 
@@ -380,7 +380,6 @@ function cizDefter() {
   if (hataMetni) { s += '<div class="hata">' + kacir(hataMetni) + '</div>'; hataMetni = null; }
 
   if (defterOdak === 'projeler') s += defterProjeler();
-  else if (defterOdak === 'ajanda') s += defterAjanda();
   else if (defterOdak === 'arsiv') s += defterArsiv();
   else if (defterOdak === 'posta') s += defterPosta();
   else if (defterOdak === 'mesaj') s += defterMesaj();
@@ -392,7 +391,7 @@ function cizDefter() {
 }
 
 function defterBasligi(hangi) {
-  const ad = { projeler: 'Projeler', takvim: 'Takvim', konular: 'Konular', ajanda: 'Ajanda',
+  const ad = { projeler: 'Projeler', takvim: 'Takvim', konular: 'Konular',
     arsiv: 'Arşiv', posta: 'Posta', mesaj: 'Mesaj' };
   return ad[hangi || defterOdak] || 'Defter';
 }
@@ -557,6 +556,26 @@ function defterMesaj() {
 
 // ----------------------------------------------------------------- konular
 
+// Ağırlık kullanıcıya sayı olarak sorulmaz. Değerler eşiklerden türetildi:
+// taban puan 30, "bilgi" eşiği 40, "aksiyon" eşiği 70. Yani +45 tek başına bir
+// maili brifingin başına çıkarır; +25 ancak size doğrudan yazılmışsa çıkarır.
+const ONCELIKLER = [
+  { deger: 45, ad: 'Çok önemli', not: 'tek başına brifingin başına çıkarır' },
+  { deger: 25, ad: 'Önemli', not: 'size yazılmışsa öne çıkar' },
+  { deger: 10, ad: 'Biraz önemli', not: 'sıralamada azıcık yukarı taşır' },
+  { deger: -25, ad: 'Önemsiz', not: 'listenin altına iter' },
+  { deger: -45, ad: 'Gürültü', not: 'brifinge hiç girmez' },
+];
+
+// Kayıtlı değer listede yoksa (elle girilmiş eski bir sayı) en yakınına yuvarlanır.
+function oncelikAdi(deger) {
+  let en = ONCELIKLER[0];
+  for (const o of ONCELIKLER) {
+    if (Math.abs(o.deger - deger) < Math.abs(en.deger - deger)) en = o;
+  }
+  return en.ad;
+}
+
 // Önem skorlamasının içerik sözlüğü. Ortak sözlük projeyle gelir ve salt
 // okunurdur; kullanıcının kendi konuları yereldir ve git dışında durur.
 function defterKonular() {
@@ -570,8 +589,9 @@ function defterKonular() {
     s += '<div class="liste">';
     k.kendi.forEach(x => {
       s += '<div class="liste-satir"><div class="govde">' +
-        '<p><b>' + kacir(x.kelime) + '</b> <span class="rozet-kucuk">' +
-        (x.agirlik > 0 ? '+' : '') + x.agirlik + '</span></p>' +
+        '<p><b>' + kacir(x.kelime) + '</b> <span class="rozet-kucuk' +
+        (x.agirlik < 0 ? ' dusuk' : '') + '">' + kacir(oncelikAdi(x.agirlik)) +
+        '</span></p>' +
         '<p class="alt kaynak">' +
         (x.dokundu ? 'son taramada ' + x.dokundu + ' maile dokundu'
                    : 'son taramada hiçbir maile dokunmadı') + '</p></div>' +
@@ -586,20 +606,24 @@ function defterKonular() {
   s += '<div class="etkinlik-form">' +
     '<input type="text" id="yeni-konu" placeholder="Kelime ya da kısa öbek" ' +
     'onkeydown="if(event.key===\'Enter\')konuEkle()">' +
-    '<input type="number" id="yeni-agirlik" value="30" min="-50" max="50" step="5" ' +
-    'title="Ağırlık: eksi değer önemi düşürür">' +
+    '<select id="yeni-oncelik">' +
+    ONCELIKLER.map(o => '<option value="' + o.deger + '"' +
+      (o.deger === 25 ? ' selected' : '') + '>' + o.ad + '</option>').join('') +
+    '</select>' +
     '<button class="btn btn-primary" onclick="konuEkle()">Ekle</button></div>';
+  s += '<p class="bos" style="margin-top:6px">' +
+    ONCELIKLER.map(o => '<b>' + o.ad + '</b> — ' + o.not).join(' · ') + '</p>';
   s += '<p class="bos" style="margin-top:8px">Türkçe ekler kendiliğinden eşleşir: ' +
     '“fatura” yazmanız yeter, “faturanız” da yakalanır. Kısa kelimeler ' +
     'alakasız maillere yapışır — gövdeyi uzun tutun.</p>';
 
   // Kişi listeleri de kişisel veri: config/ değil, yerel dosyada durur.
   s += '<p class="ayrac">Kişiler</p>' +
-    '<p class="bos">VIP listesindekilerden gelen her mail öne çıkar (+40), ' +
-    'gürültü listesindekiler geri düşer (−40). ' +
+    '<p class="bos">VIP listesindekilerden gelen her mail öne çıkar, ' +
+    'gürültü listesindekiler geri düşer. ' +
     (k.yazistiklarim ? 'Ayrıca daha önce yazıştığınız <b>' + k.yazistiklarim +
-      '</b> adres kendiliğinden +35 alıyor — VIP listesi boş olsa bile gerçek ' +
-      'muhataplarınız öne çıkar.' : '') + '</p>';
+      '</b> adres kendiliğinden öne alınıyor — VIP listesi boş olsa bile gerçek ' +
+      'muhataplarınız kaybolmaz.' : '') + '</p>';
 
   const kisiListesi = (baslik, liste, sinif) => {
     let g = '<p class="ayrac-ince">' + baslik + '</p>';
@@ -626,8 +650,9 @@ function defterKonular() {
     '<div class="liste">';
   k.ortak.forEach(x => {
     s += '<div class="liste-satir' + (x.kapali ? ' sonuk-satir' : '') + '"><div class="govde">' +
-      '<p><b>' + kacir(x.kategori) + '</b> <span class="rozet-kucuk">' +
-      (x.agirlik > 0 ? '+' : '') + x.agirlik + '</span> · ' + x.govde_sayisi + ' kelime</p>' +
+      '<p><b>' + kacir(x.kategori) + '</b> <span class="rozet-kucuk' +
+      (x.agirlik < 0 ? ' dusuk' : '') + '">' + kacir(oncelikAdi(x.agirlik)) +
+      '</span> · ' + x.govde_sayisi + ' kelime</p>' +
       '<p class="alt kaynak">' + kacir(x.ornekler.join(' · ')) + '…</p></div>' +
       '<button class="baglanti" onclick="kategoriDegistir(\'' + kacir(x.kategori) +
       '\',' + (x.kapali ? 'false' : 'true') + ')">' +
@@ -639,7 +664,7 @@ function defterKonular() {
 
 async function konuEkle() {
   const kelime = (document.getElementById('yeni-konu') || {}).value || '';
-  const agirlik = (document.getElementById('yeni-agirlik') || {}).value || '30';
+  const agirlik = (document.getElementById('yeni-oncelik') || {}).value || '25';
   if (!kelime.trim()) return;
   const r = await cagir('/api/konu-ekle', { kelime: kelime.trim(), agirlik: Number(agirlik) });
   if (r.hata) { hataMetni = r.hata; return ciz(); }
@@ -803,35 +828,6 @@ async function etkinlikKaldir(id) {
   const r = await cagir('/api/etkinlik-iptal', { id: id });
   if (r.hata) { hataMetni = r.hata; return ciz(); }
   await yenile();
-}
-
-function defterAjanda() {
-  const e = (D.ajanda && D.ajanda.etkinlikler) || [];
-  const yok = (D.ajanda && D.ajanda.takvimde_yok) || [];
-  if (!e.length && !yok.length) return '<p class="bos">Ajanda boş.</p>';
-
-  let s = '<div class="liste">';
-  e.forEach(x => {
-    const hazir = (x.hazirlik || []).filter(h => h.durum === 'bekliyor');
-    s += '<div class="liste-satir"><div class="govde">' +
-      '<p>' + gunAdi(x.baslangic) + ' ' + saat(x.baslangic) + ' — ' + kacir(x.baslik) + '</p>' +
-      (x.ana_konu ? '<p class="alt">' + kacir(x.ana_konu) + '</p>' : '') +
-      (hazir.length ? '<p class="alt">Öncesinde: ' +
-        hazir.map(h => kacir(h.madde)).join(' · ') + '</p>' : '') +
-      '</div></div>';
-  });
-  s += '</div>';
-
-  if (yok.length) {
-    s += '<div class="ay">Takvimde yok</div><div class="liste">';
-    yok.forEach(x => {
-      s += '<div class="liste-satir"><div class="govde"><p>' + kacir(x.ozet) + ' — ' +
-        gunAdi(x.onerilen_zaman) + ' ' + saat(x.onerilen_zaman) + '</p>' +
-        '<p class="alt kaynak">' + kacir(x.kaynak) + '</p></div></div>';
-    });
-    s += '</div>';
-  }
-  return s;
 }
 
 function defterArsiv() {
@@ -1035,7 +1031,6 @@ function veriImzasi(d) {
     (d.takvim || []).length,
     ((d.konular && d.konular.kendi) || []).length,
     ((d.sosyal && d.sosyal.konusmalar) || []).length,
-    ((d.ajanda && d.ajanda.etkinlikler) || []).length,
     (d.projeler || []).length,
   ].join('|');
 }

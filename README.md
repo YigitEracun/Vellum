@@ -1,14 +1,15 @@
 # Vellum
 
-Kişisel asistan sistemi. Gmail, Instagram DM ve Google Takvim'i okur, önemli olanı ayıklar,
+Kişisel asistan sistemi. Gmail ve Instagram DM'lerini okur, önemli olanı ayıklar,
 cevap taslakları hazırlar ve projelerin geçmişini tutar. **Hiçbir şey onaysız gönderilmez.**
 
 Yerel çalışır, dosya tabanlıdır, Claude API üzerinden düşünür ve tek bir web paneli
 üzerinden kullanılır.
 
 > Durum: geliştirme aşaması. Gmail bağlantısı (IMAP, salt okuma), kural tabanlı skorlama,
-> canlı izleme ve masaüstü bildirimi çalışıyor; Takvim ve Instagram bağlantıları henüz
-> kurulmadı. Gönderim kapalı — onaylar yalnızca kaydedilir.
+> takvim, canlı izleme ve masaüstü bildirimi çalışıyor. Instagram çekicisi hazır, hesap
+> bağlanmayı bekliyor; Google Takvim bağlantısı henüz kurulmadı. Gönderim kapalı —
+> onaylar yalnızca kaydedilir.
 
 ---
 
@@ -16,7 +17,6 @@ Yerel çalışır, dosya tabanlıdır, Claude API üzerinden düşünür ve tek 
 
 - **Posta** — her maile önem skoru verir, aksiyon gerektirenleri çıkarır, cevap taslağı yazar
 - **Mesaj** — Instagram DM'lerini eler ve özetler, cevap penceresi kapanmadan uyarır
-- **Ajanda** — randevuların ana konusunu özetler, **öncesinde yapılması gerekenleri** listeler
 - **Defter** — projelerin olay geçmişini tutar: hangi adımdan geçildi, ne yaşandı,
   hangi karar neden alındı
 
@@ -26,7 +26,7 @@ Yerel çalışır, dosya tabanlıdır, Claude API üzerinden düşünür ve tek 
 
 Bu projeyi diğer "AI asistan" denemelerinden ayıran şey, birkaç bilinçli kısıt:
 
-**Tek varlık, çok uzuv.** Dört ajan var ama kullanıcı için tek bir varlık. Alt ajanlar
+**Tek varlık, çok uzuv.** Üç ajan var ama kullanıcı için tek bir varlık. Alt ajanlar
 kullanıcıya hitap etmez, kendi üslubunu kullanmaz; yalnızca yapılandırılmış veri üretir.
 Onu insan diline çeviren tek yer Çekirdek'tir. Üç ayrı rapor değil, harmanlanmış tek metin.
 
@@ -81,10 +81,10 @@ göre çalışır.
      kullanıcı ◄──► │   ÇEKİRDEK  (tek ses)     │
                     └────┬───────┬────────┬─────┘
                          │       │        │
-                   ┌─────▼──┐ ┌──▼────┐ ┌─▼───────┐
-                   │ Posta  │ │ Mesaj │ │ Ajanda  │
-                   └─────┬──┘ └──┬────┘ └─┬───────┘
-                         └───────┴────────┘
+                   ┌─────▼──┐ ┌──▼────┐
+                   │ Posta  │ │ Mesaj │
+                   └─────┬──┘ └──┬────┘
+                         └───────┘
                                  │
                       ┌──────────▼──────────┐
                       │  state/ + projects/ │
@@ -92,7 +92,7 @@ göre çalışır.
                       └─────────────────────┘
 ```
 
-Proje ajanı dördüncü bir uzuv değil, diğer üçünün **ortak belleğidir**: her ajan olayları
+Proje ajanı üçüncü bir uzuv değil, diğer ikisinin **ortak belleğidir**: her ajan olayları
 ilgili projeye düşürür, proje geçmişi kendiliğinden oluşur.
 
 Veri çekme işi ajanlara ait değildir — fetch scriptleri ham veriyi `state/raw/` altına
@@ -127,7 +127,7 @@ kâtibin günün ilk mesajı olarak gelir; onaylar sohbetin içinde satır satı
 │ KÜNYE        │  Günaydın. Gün tek bir işin        │
 │ ● Posta   4  │  etrafında dönüyor: ...            │
 │ ● Mesaj   7  │  ────────────────────────────────  │
-│ ● Ajanda  3  │  ONAYINIZI BEKLEYEN 2 ŞEY          │
+│              │  ONAYINIZI BEKLEYEN 2 ŞEY          │
 │              │  Ayşe — "..."  [Onayla] [Değiştir] │
 │ BUGÜN        │  ────────────────────────────────  │
 │ 11:00 Kayalar│                  siz yazdınız ▸    │
@@ -188,6 +188,34 @@ karaktere kırpılır. Okunabilir ve 5 MB altındaki ekler `state/raw/ekler/` al
 Panelden "şimdi tara" dendiğinde bu çekme adımı kendiliğinden çalışır. Çekme başarısız
 olursa tarama durmaz — ajanlar eldeki son veriyle devam eder, hata adım listesinde görünür.
 
+### Instagram DM bağlantısı
+
+Hesabınızın **profesyonel** (İşletme veya Kreatör) olması şart — kişisel hesap bu API'yi
+kullanamaz. Facebook Sayfası gerekmez, kendi hesabınız için App Review de gerekmez.
+
+1. [developers.facebook.com](https://developers.facebook.com) → yeni uygulama → **Instagram**
+   ürünü ekleyin, "API setup with Instagram business login" bölümüne girin.
+2. Instagram hesabınızı uygulamaya bağlayın (uygulamada rolünüz olmalı).
+3. **OAuth Redirect URI** olarak `http://localhost:8788/` ekleyin.
+4. Uygulama kimliğini ve gizli anahtarı `secrets/.env` dosyasına yazın:
+
+```
+IG_APP_ID=...
+IG_APP_SECRET=...
+```
+
+5. Hesabı bağlayın — tarayıcı açılır, izin verirsiniz, token `secrets/` altına yazılır:
+
+```bash
+python scripts/instagram_fetch.py --baglan
+```
+
+Token 60 gün geçerlidir ve her taramada günde bir kez kendiliğinden tazelenir. Bağlantı
+kurulmadıysa tarama Instagram adımını sessizce atlar — kurulmamış bir kaynak hata değildir.
+
+Meta'nın 24 saat kuralı **okumayı değil göndermeyi** kısıtlar: karşı tarafın son mesajından
+24 saat sonra API ile serbest metin gönderilemez. Vellum zaten göndermiyor.
+
 Paneli başlatın:
 
 ```bash
@@ -209,7 +237,7 @@ python scripts/seed_ornek_veri.py
 ```
 ├── CLAUDE.md              Çekirdek talimatları
 ├── PLAN.md                sistem planı ve kararların gerekçeleri
-├── .claude/agents/        dört ajan tanımı (hem belge hem yapılandırma)
+├── .claude/agents/        üç ajan tanımı (hem belge hem yapılandırma)
 ├── config/                persona, skorlama rubriği, kişi listeleri
 ├── state/                 ortak hafıza: digest'ler, taslaklar, brifing arşivi
 ├── projects/              proje hafızası: olaylar.jsonl + durum.json
@@ -222,6 +250,7 @@ python scripts/seed_ornek_veri.py
 │   └── _ds/broadsheet/    tasarım sistemi
 └── scripts/
     ├── gmail_fetch.py      Gmail → state/raw/gmail.json (IMAP, salt okuma)
+    ├── instagram_fetch.py  Instagram DM → state/raw/instagram.json
     ├── izleyici.py         canlı izleyici: yeni maili yakalar, bildirir
     ├── kart.py             Broadsheet bildirim kartı (masaüstü pop-up)
     ├── test_skorlama.py    kural motorunun birim testleri
@@ -266,20 +295,22 @@ sıralama daima ham skora göre yapılır — aksi halde 140 puanlık bir sözle
 |---|---|---|
 | 0 | İskelet, ajan tanımları, uçtan uca akış | tamam |
 | 1 | Gmail entegrasyonu (IMAP fetch, salt okuma) | tamam |
-| 2 | Google Takvim entegrasyonu | bekliyor |
+| 2 | Google Takvim entegrasyonu | kapsam dışı — Takvim sayfası yerel veriyle çalışıyor |
 | 3 | Canlı izleme + masaüstü bildirimi | tamam |
 | 4 | Onay ve gönderimin canlıya alınması | bekliyor |
 | 5 | Proje hafızası | tamam |
 | 6 | Telegram botu — panelin uzaktan kolu | bekliyor |
 | 7 | Panel arayüzü | tamam |
-| 8 | Instagram DM (Meta App Review) | bekliyor |
+| 8 | Instagram DM (profesyonel hesap) | kısmen — çekici hazır, hesap bağlanmadı |
 
 ---
 
 ## Bilinen sınırlar
 
-- Instagram DM erişimi Meta App Review onayı gerektirir; ayrıca Meta'nın 24 saat kuralı
-  vardır — karşı tarafın son mesajından 24 saat sonra API ile serbest metin gönderilemez.
+- Instagram DM için hesabın **profesyonel** (İşletme/Kreatör) olması şart; kişisel hesap bu
+  API'yi kullanamaz ve profesyonel hesaplar gizli olamaz. Kendi hesabınız için App Review
+  gerekmez. Meta'nın 24 saat kuralı okumayı değil göndermeyi kısıtlar — karşı tarafın son
+  mesajından 24 saat sonra serbest metin gönderilemez.
 - Yalnızca **eşiği geçen** maillerin içeriği modele gönderilir; gerisi diski hiç terk
   etmez. Ham veri, digest'ler, taslaklar, bildirimler ve sohbet kaydı versiyon kontrolüne
   girmez — `.gitignore` bunları kapsar.

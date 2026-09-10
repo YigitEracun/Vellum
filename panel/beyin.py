@@ -495,7 +495,6 @@ def brief(ilerleme=None):
     # Diğer toplayıcılar ham veri dosyasına bakar; kaynak bağlı değilse çağrılmaz.
     isler = {
         "social-agent": "state/raw/instagram.json",
-        "calendar-agent": "state/raw/calendar.json",
     }
     calisacak = {ad: kaynak for ad, kaynak in isler.items()
                  if os.path.exists(os.path.join(KOK, kaynak))}
@@ -544,7 +543,7 @@ def brief(ilerleme=None):
             sonuclar["proje-agent"] = agent_calistir(
                 "proje-agent",
                 "Mevcut digest dosyalarını oku (state/brifing-girdisi.json, "
-                "state/social-queue.json, state/agenda.json — yalnızca var olanları), "
+                "state/social-queue.json — yalnızca var olanları), "
                 "projelere olay öner ve durum.json dosyalarını türet. "
                 "brifing-girdisi.json yalnızca önemli maddeleri taşır; elenenler "
                 "`elenen_dusuk_oncelikli` sayısındadır ve proje olayı üretmezler.",
@@ -563,7 +562,7 @@ def brief(ilerleme=None):
     brifing = calistir(
         cekirdek_sistemi(),
         "Alt agent'lar çalıştı ve state/ ile projects/ altındaki dosyaları güncelledi. "
-        "Şimdi state/brifing-girdisi.json, state/social-queue.json, state/agenda.json ve "
+        "Şimdi state/brifing-girdisi.json, state/social-queue.json ve "
         "projects/*/durum.json dosyalarından VAR OLANLARI oku ve günlük brifingi üret. "
         "brifing-girdisi.json kural motorunun önemli bulduğu maddeleri taşır; elenenleri "
         "tek tek arama, sayıları `elenen_dusuk_oncelikli` alanında — onlardan en fazla "
