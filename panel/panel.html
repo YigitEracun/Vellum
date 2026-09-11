@@ -414,6 +414,99 @@ body {
   border-radius: var(--radius-md);
 }
 
+/* — sesli mod — */
+/* Sınıf seçicisinden gelen display, tarayıcının [hidden] varsayılanını ezer;
+   gizlenecek iki kolonda da bu yüzden açıkça geri alınıyor. */
+.sutun[hidden], .ses-ekran[hidden], .ses-yan[hidden] { display: none !important; }
+/* Sesli modda üç kolon: künye · sahne · tarama şeridi. Ekran tek bir pencere
+   olmalı — sayfa aşağı kaymazsa mikrofon her zaman elin altında durur. */
+.tabaka.uc-kolon {
+  grid-template-columns: 236px 1fr 320px;
+  height: 100vh; min-height: 0; overflow: hidden;
+}
+.ses-ekran {
+  display: flex; flex-direction: column; min-width: 0;
+  height: 100vh; min-height: 0; overflow: hidden;
+  padding: var(--space-7) var(--space-8) var(--space-8);
+  background: var(--color-bg);
+}
+.ses-sahne { flex: 1 1 auto; min-height: 120px; position: relative; }
+.avatar-tuval { display: block; }
+.ses-yuz { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-5); }
+
+/* Balon: konuşulanın yazılı hâli. Sahnenin altında, ortada, okunur genişlikte. */
+.ses-balon {
+  position: relative; max-width: 560px; width: 100%;
+  min-height: 76px; padding: var(--space-5) var(--space-6);
+  background: var(--color-bg); border: 1px solid var(--color-divider);
+  border-radius: var(--radius-xl); box-shadow: var(--shadow-8);
+  font-size: var(--fs-400); line-height: var(--lh-400); color: var(--color-text);
+}
+.ses-balon.benim { background: var(--color-accent-100); border-color: var(--color-accent-200); }
+.ses-balon.bos { color: var(--color-neutral-600); box-shadow: var(--shadow-2); }
+/* Balonun sahneye bakan sivri ucu */
+.ses-balon::before {
+  content: ''; position: absolute; top: -7px; left: 50%; width: 12px; height: 12px;
+  margin-left: -6px; transform: rotate(45deg);
+  background: inherit; border-left: 1px solid var(--color-divider);
+  border-top: 1px solid var(--color-divider); border-radius: 2px 0 0 0;
+}
+.ses-balon.benim::before { border-color: var(--color-accent-200); }
+
+.ses-durum {
+  font-size: var(--fs-200); line-height: var(--lh-200);
+  color: var(--color-neutral-600); text-align: center; min-height: var(--lh-200);
+}
+.ses-dugmeler { display: flex; gap: var(--space-4); align-items: center; }
+.mikrofon {
+  width: 64px; height: 64px; border-radius: var(--radius-circular);
+  border: 1px solid var(--color-accent-700); background: var(--color-accent-700);
+  color: #fff; font-size: var(--fs-500); cursor: pointer;
+  box-shadow: var(--shadow-8); transition: transform var(--gecis), background var(--gecis);
+}
+.mikrofon:hover { background: var(--color-accent-600); }
+.mikrofon:active, .mikrofon.acik { background: var(--color-accent-800); transform: scale(.94); }
+.mikrofon[disabled] { background: var(--color-disabled); border-color: var(--color-disabled);
+  cursor: default; box-shadow: none; }
+.ses-uyari {
+  max-width: 560px; font-size: var(--fs-200); line-height: var(--lh-200);
+  color: var(--color-accent-2); text-align: center;
+}
+
+/* Sesli moddaki yazı kutusu: aynı soru, elle. Konuşamayacağınız yerde de
+   çalışsın diye var — cevap yine sesli gelir. */
+.ses-yazi { width: 100%; max-width: 560px; display: flex; gap: var(--space-3); }
+.ses-yazi input { flex: 1 1 auto; }
+
+/* — sağ şerit — */
+.ses-yan {
+  border-left: 1px solid var(--color-divider);
+  background: var(--color-surface);
+  padding: var(--space-6) var(--space-5);
+  display: flex; flex-direction: column; gap: var(--space-5);
+  overflow-y: auto; max-height: 100vh;
+}
+.ses-yan .yan-baslik {
+  font-size: var(--fs-100); line-height: var(--lh-100);
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--color-neutral-600); font-weight: 600;
+}
+.ses-yan .bildirim-kutusu, .ses-yan .tarama-canli { margin: 0; }
+.ses-yan .bildirim { font-size: var(--fs-200); line-height: var(--lh-200); }
+.ses-yan .yan-bos {
+  font-size: var(--fs-200); line-height: var(--lh-200); color: var(--color-neutral-600);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mikrofon { transition: none; }
+}
+@media (max-width: 760px) {
+  .ses-ekran { padding: var(--space-5); }
+  .ses-sahne { min-height: 180px; }
+  .tabaka.uc-kolon { grid-template-columns: 1fr; }
+  .ses-yan { border-left: 0; border-top: 1px solid var(--color-divider); max-height: none; }
+}
+
 /* — dialog — */
 /* Tasarım sisteminin .dialog-backdrop{display:grid} kuralı sınıf seçicisi olduğu
    için tarayıcının [hidden] varsayılanını eziyor; kapalıyken gizli kalması için
@@ -462,12 +555,22 @@ body {
 <div class="tabaka">
   <aside class="kunye" id="kunye"></aside>
   <main class="sutun" id="sutun"></main>
+  <!-- Sesli mod ayrı bir main: sahne kabı ciz()'in innerHTML'ine girmiyor.
+       Girseydi her çizimde WebGL/canvas bağlamı yok edilip yeniden kurulurdu. -->
+  <main class="ses-ekran" id="ses-ekran" hidden>
+    <div class="ses-sahne" id="ses-sahne"></div>
+    <div class="ses-yuz" id="ses-yuz"></div>
+  </main>
+  <!-- Sağ şerit yalnızca sesli modda: tarama ve günün önemli mailleri. -->
+  <aside class="ses-yan" id="ses-yan" hidden></aside>
 </div>
 
 <div class="dialog-backdrop" id="ortu" hidden>
   <div class="dialog genis" id="modal" role="dialog" aria-modal="true"></div>
 </div>
 
+<script src="/avatar.js"></script>
+<script src="/ses.js"></script>
 <script src="/panel.js"></script>
 </body>
 </html>

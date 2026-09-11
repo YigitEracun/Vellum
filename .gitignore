@@ -22,3 +22,5 @@ state/social-queue.json
 state/agenda.json
 state/taslaklar/
 state/log/
+# Uretilen konusma sesleri: cevabin kendisi kadar mahrem, ustelik ikili dosya.
+state/ses/

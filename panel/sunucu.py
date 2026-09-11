@@ -576,8 +576,9 @@ def sohbet(govde):
     if not soru:
         return {"hata": "Bos soru."}
     gecmis = govde.get("gecmis") or []
+    sesli = bool(govde.get("ses"))
     try:
-        cevap = _beyin().sohbet(soru, gecmis)
+        cevap = _beyin().sohbet(soru, gecmis, ses=sesli)
         sohbet_kaydet("kullanici", soru)
         sohbet_kaydet("asistan", cevap)
         return {"cevap": cevap}
@@ -585,6 +586,24 @@ def sohbet(govde):
         return {"hata": str(hata)}
     except Exception as hata:
         return {"hata": anlasilir_hata(hata)}
+
+
+def seslendir(govde):
+    """Metni mp3'e cevirir, panelin calabilecegi adresi doner.
+
+    Ses uretilemezse hata degil, `yol: null` doner: panel sessiz devam eder.
+    """
+    metin = (govde.get("metin") or "").strip()
+    if not metin:
+        return {"yol": None}
+    try:
+        import seslendir as motor
+    except ImportError:
+        return {"yol": None, "not": "edge-tts kurulu degil: pip install edge-tts"}
+    dosya = motor.seslendir(metin)
+    if not dosya:
+        return {"yol": None, "not": "Ses uretilemedi (ag ya da servis)."}
+    return {"yol": "/ses/" + os.path.basename(dosya)}
 
 
 def ham_veri_cek(adimlar):
@@ -698,6 +717,7 @@ ROTALAR = {
     "/api/olay": olay_karari,
     "/api/onay": taslak_onayi,
     "/api/sohbet": sohbet,
+    "/api/seslendir": seslendir,
     "/api/tarama": tarama,
     "/api/etkinlik-ekle": etkinlik_ekle,
     "/api/etkinlik-iptal": etkinlik_iptal,
@@ -736,7 +756,13 @@ class Isleyici(BaseHTTPRequestHandler):
         ".js": "text/javascript; charset=utf-8",
         ".json": "application/json; charset=utf-8",
         ".svg": "image/svg+xml",
+        ".mp3": "audio/mpeg",
+        ".png": "image/png",
+        ".woff2": "font/woff2",
     }
+    # Metin olarak okunacak uzantilar. Gerisi ikili okunur — mp3'u utf-8
+    # cozmeye kalkmak patlar.
+    METIN_TURLERI = (".css", ".js", ".json", ".svg", ".html", ".txt", ".md")
 
     def _statik(self, yol):
         """panel/ altındaki statik dosyaları sunar (tasarım sistemi vb.)."""
@@ -744,20 +770,40 @@ class Isleyici(BaseHTTPRequestHandler):
         tam = os.path.normpath(os.path.join(PANEL, gorece))
         if os.path.commonpath([os.path.abspath(tam), PANEL]) != PANEL:
             return self._gonder(403, "yasak", "text/plain; charset=utf-8")
+        self._gonder_dosya(tam)
+
+    def _gonder_dosya(self, tam):
+        """Diskteki bir dosyayı türüne göre metin ya da ikili olarak yollar."""
         if not os.path.isfile(tam):
             return self._gonder(404, "yok", "text/plain; charset=utf-8")
-        tur = self.TURLER.get(os.path.splitext(tam)[1].lower(),
-                              "application/octet-stream")
-        self._gonder(200, io.open(tam, encoding="utf-8").read(), tur)
+        uzanti = os.path.splitext(tam)[1].lower()
+        tur = self.TURLER.get(uzanti, "application/octet-stream")
+        if uzanti in self.METIN_TURLERI:
+            return self._gonder(200, io.open(tam, encoding="utf-8").read(), tur)
+        with open(tam, "rb") as d:
+            self._gonder(200, d.read(), tur)
+
+    def _ses(self, yol):
+        """Uretilmis mp3'leri sunar. Ad disaridan geldigi icin dogrulanir."""
+        try:
+            import seslendir as motor
+        except ImportError:
+            return self._gonder(404, "yok", "text/plain; charset=utf-8")
+        tam = motor.dosya_yolu(yol.rsplit("/", 1)[-1])
+        if not tam:
+            return self._gonder(404, "yok", "text/plain; charset=utf-8")
+        self._gonder_dosya(tam)
 
     def do_GET(self):
         yol = urlparse(self.path).path
         if yol in ("/", "/index.html"):
             return self._dosya("panel.html", "text/html; charset=utf-8")
-        if yol == "/panel.js":
-            return self._dosya("panel.js", "text/javascript; charset=utf-8")
+        if yol.endswith(".js") and yol.count("/") == 1:
+            return self._statik(yol)     # panel.js, avatar.js, ses.js
         if yol.startswith("/_ds/"):
             return self._statik(yol)
+        if yol.startswith("/ses/"):
+            return self._ses(yol)
         if yol == "/api/durum":
             return self._gonder(200, toplu_durum())
         if yol.startswith("/api/taslak/"):

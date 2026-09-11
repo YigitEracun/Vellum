@@ -256,7 +256,7 @@ def _metin(mesaj):
 
 
 def calistir(sistem, istek, araclar, efor=None, max_tokens=16000,
-             kirpilma_hata=False):
+             kirpilma_hata=False, ek_sistem=None):
     """Bir tool-use döngüsü çalıştırır, son mesajın metnini döner.
 
     `istek` tek bir metin ya da hazır bir mesaj listesi olabilir.
@@ -265,6 +265,10 @@ def calistir(sistem, istek, araclar, efor=None, max_tokens=16000,
     için True olmalı — kırpılan bir agent dosyasını yazamadan durur ve elde hiçbir
     şey kalmaz; bunun sessizce "başarılı" sayılması brifingi boş gösterir.
     Sohbette False: yarım da olsa cevabı görmek kullanıcının işine yarar.
+
+    `ek_sistem`: duruma göre değişen yönerge (örn. "bu cevap sesli okunacak").
+    Ayrı bir blok olarak, önbelleğe alınan bloğun ardına eklenir — sabit öneke
+    karışsaydı her mod değişiminde önbellek boşa düşerdi.
     """
     mesajlar = istek if isinstance(istek, list) else [
         {"role": "user", "content": istek}
@@ -280,6 +284,8 @@ def calistir(sistem, istek, araclar, efor=None, max_tokens=16000,
         "text": sistem,
         "cache_control": {"type": "ephemeral"},
     }]
+    if ek_sistem:
+        sistem_bloklari.append({"type": "text", "text": ek_sistem})
     runner = istemci().beta.messages.tool_runner(
         model=MODEL,
         max_tokens=max_tokens,
@@ -354,11 +360,24 @@ def agent_calistir(ad, istek):
 SOHBET_HAFIZASI = 20
 
 
-def sohbet(soru, gecmis=None):
+SESLI_YONERGE = (
+    "Bu cevap yüksek sesle okunacak. Buna göre konuş: en fazla üç cümle, "
+    "kısa cümleler, sohbet dili. Madde işareti, başlık, kalın yazı, bağlantı "
+    "ve emoji kullanma — hiçbiri sesli okunamaz, okunursa da saçmalar. "
+    "Uzun bir liste sayman gerekiyorsa en önemli ikisini söyle, gerisi için "
+    "'panelde duruyor' de. Eğik çizgili komut adı, dosya yolu ya da tuş "
+    "kısayolu söyleme — bunlar sesli okunduğunda anlaşılmaz."
+)
+
+
+def sohbet(soru, gecmis=None, ses=False):
     """Panelden gelen soruyu Çekirdek'e iletir (salt okunur araçlarla).
 
     `gecmis`: [{"rol": "kullanici"|"asistan", "metin": "..."}] listesi.
     Rolleri sıraya sokar; API user/assistant dönüşümlü olmasını şart koşar.
+
+    `ses`: cevap sesli moddan isteniyorsa True. Cevabı kısaltır — hem kulağa
+    doğru gelsin diye hem de çıktı token'ı azaldığı için daha ucuza.
     """
     mesajlar = []
     for tur in (gecmis or [])[-SOHBET_HAFIZASI:]:
@@ -380,7 +399,8 @@ def sohbet(soru, gecmis=None):
     else:
         mesajlar.append({"role": "user", "content": soru})
 
-    return calistir(cekirdek_sistemi(), mesajlar, OKUMA_ARACLARI)
+    return calistir(cekirdek_sistemi(), mesajlar, OKUMA_ARACLARI,
+                    ek_sistem=SESLI_YONERGE if ses else None)
 
 
 ESIK = 40   # ham skor: bunun altındaki mail modele hiç gösterilmez

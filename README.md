@@ -117,8 +117,28 @@ görebilmek skorlamayı düzeltmenin tek yoludur.
 
 ## Arayüz
 
-Arayüz bir gösterge tablosu değil, bir konuşmadır. Brifing ayrı bir kutu olarak değil,
-kâtibin günün ilk mesajı olarak gelir; onaylar sohbetin içinde satır satır verilir.
+Arayüz bir gösterge tablosu değil, bir konuşmadır. Panel açıldığında **sesli mod**
+karşılar: ortada Vellum durur, ona konuşarak ya da yazarak sorulur, cevap sesli gelir.
+Tarama düğmesi ve günün önemli mailleri sağdaki şeritte durur.
+
+```
+┌──────────────┬─────────────────────────┬──────────────────┐
+│ V Vellum     │                         │ TARAMA           │
+│              │          ( ◕ ◕ )        │ [ şimdi tara ]   │
+│ KÜNYE        │                         │                  │
+│ ● Posta   4  │  ┌───────────────────┐  │ ÖNEMLİ MAİLLER   │
+│ ● Mesaj   7  │  │ Bugün üç önemli   │  │ 120 Ayşe — ...   │
+│ ▌ Sesli mod  │  │ mailin var…       │  │  95 Kayalar — …  │
+│              │  └───────────────────┘  │                  │
+│ DEFTER       │                         │ ONAYINIZI        │
+│ Projeler     │      ( 🎙 )  Yazıya dön │ BEKLEYEN         │
+│ Takvim       │                         │ Ayşe — "…"       │
+│ Konular      │  [ Ya da yazın…  Söyle ]│ [Onayla][Değiş]  │
+└──────────────┴─────────────────────────┴──────────────────┘
+```
+
+Yazılı akış "Yazıya dön" ile açılır. Orada brifing ayrı bir kutu olarak değil, günün
+ilk mesajı olarak gelir; onaylar sohbetin içinde satır satır verilir.
 
 ```
 ┌──────────────┬────────────────────────────────────┐
@@ -147,6 +167,29 @@ tasarım dili Fluent 2 ile değiştirildi. Broadsheet stylesheet'i `tasarım/` a
 
 Gösterge tablosu (projeler, zaman çizelgesi, arşiv) **Defter** görünümünde durur.
 
+### Sesli mod
+
+Panelin açılış ekranı. Ortada bir küre durur, altındaki balonda söylenen yazılır;
+mikrofon düğmesine basılı tutup konuşursunuz ya da alttaki kutuya yazarsınız — iki
+yol da aynı akışa girer, cevap iki durumda da sesli gelir.
+
+- **Dinleme** tarayıcının kendi konuşma tanımasıyla, bas-konuş. Sürekli dinleme yok.
+- **Konuşma** `edge-tts` ile Microsoft'un Türkçe neural sesinden (`tr-TR-AhmetNeural`).
+  Anahtar istemez, ücret istemez. Üretilen mp3 `state/ses/` altında durur; aynı cümle
+  bir daha söylenirse ağa çıkılmaz.
+- **Küre** sesin şiddetiyle oynar: çalan ses `AnalyserNode`'dan geçer, ölçülen güç
+  doğrudan çizime gider. Ağzı yoktur, dudak senkronu da yoktur.
+- **Kayıt** değişmez: sesli turlar da `state/sohbet.jsonl`'e yazılır, yazılı moda
+  dönünce konuşma orada durur.
+- **Sağ şerit** yalnızca bu ekranda: tarama düğmesi, süren taramanın canlı hâli,
+  günün eşiği geçen mailleri ve onay bekleyen taslaklar. Yazılı akışta bunlar zaten
+  konuşmanın içinde olduğu için orada tekrarlanmaz.
+- Sesli modda cevaplar üç cümleyle sınırlanır. Hem kulağa doğru gelir hem de çıktı
+  token'ı azaldığı için **yazılı moddan ucuza** gelir.
+
+Ses üretilemezse (ağ yok, servis kapalı) balon yazmayı sürdürür: sessizlik hata
+sayılmaz, konuşmayı kaybetmekten iyidir.
+
 ---
 
 ## Kurulum
@@ -154,8 +197,10 @@ Gösterge tablosu (projeler, zaman çizelgesi, arşiv) **Defter** görünümünd
 Gereken: Python 3.12.
 
 ```bash
-pip install anthropic pypdf
+pip install anthropic pypdf edge-tts
 ```
+
+`edge-tts` yalnızca sesli mod için gerekir; kurulu değilse panel sessiz çalışır.
 
 API anahtarını `.env` dosyasına yazın:
 
@@ -249,8 +294,11 @@ python scripts/seed_ornek_veri.py
 │   ├── sunucu.py          yerel sunucu + canlı izleyici (standart kütüphane)
 │   ├── beyin.py           Çekirdek + ajanlar (Claude API, tool use)
 │   ├── skorlama.py        kural motoru — önem skorlaması, modelsiz
+│   ├── seslendir.py       metin → mp3 (edge-tts), diske cacheler
 │   ├── panel.html         arayüz yerleşimi
 │   ├── panel.js
+│   ├── avatar.js          sesli moddaki küre
+│   ├── ses.js             mikrofon, oynatma, konuşma balonu
 │   └── _ds/fluent2/      tasarım sistemi (Fluent 2 token'ları)
 └── scripts/
     ├── gmail_fetch.py      Gmail → state/raw/gmail.json (IMAP, salt okuma)
@@ -333,6 +381,13 @@ sıralama daima ham skora göre yapılır — aksi halde 140 puanlık bir sözle
 - Masaüstü kartının köşesi diktir: Tkinter'da `overrideredirect` pencere yuvarlatılamıyor,
   paneldeki kartlar 8 px yarıçaplı olduğu hâlde bu kart öyle değil.
 - Canlı izleme panel sunucusuyla birlikte çalışır; panel kapanınca izleme de durur.
+- Sesli modun dinlemesi tarayıcıya bağlıdır: Chrome ve Edge'de çalışır, Firefox'ta yok.
+  Konuşma tanıma sesi tarayıcının sunucusuna gönderir — tek satırlık soru bile olsa
+  bilgisayardan çıkar. Yazılı mod bunu yapmaz.
+- Konuşma sesi Microsoft'un servisinden üretilir; cevap metni oraya gider. İnternet
+  yoksa ses gelmez, balon yazmaya devam eder.
+- Sesli modda cevap gelmesi iki beklemeden oluşur: model (birkaç saniye) ve ses üretimi
+  (ilk seferde ~2-4 sn, sonra cache'ten anında).
 
 ---
 

@@ -7,7 +7,9 @@ const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz',
 const GUNLER = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
 let D = null;                 // /api/durum çıktısı
-let gorunum = 'konusma';      // 'konusma' | 'defter'
+// Ana ekran sesli mod: panel açıldığında Vellum karşınızda durur, yazılı akış
+// "Yazıya dön" ile açılır.
+let gorunum = 'ses';          // 'ses' | 'konusma' | 'defter'
 let defterOdak = 'projeler';  // 'projeler' | 'takvim' | 'konular' | 'posta' | 'mesaj' | 'arsiv'
 let acikProje = null;
 let etiketSuzgeci = null;
@@ -155,6 +157,9 @@ function cizKunye() {
   s += '<div class="gizle-mobil gezinme"><div class="kunye-baslik">Künye</div><div class="kunye-grup">' +
     ajanSatiri('posta', 'n-mavi', 'Posta', onemliPosta) +
     ajanSatiri('mesaj', 'n-mavi', 'Mesaj', konusmalar.length) +
+    '<button class="ajan' + (gorunum === 'ses' ? ' etkin' : '') +
+    '" onclick="sesliModaGec()">' +
+    '<span class="nokta n-yok"></span>Sesli mod<span class="sayi">🎙</span></button>' +
     '</div></div>';
 
   const bekleyenEtkinlik = (D.takvim || []).filter(e =>
@@ -281,9 +286,13 @@ function kisalt(metin, n) {
 function bildirimOzeti(id) {
   const b = (D.bildirimler || []).find(x => String(x.id) === String(id));
   if (!b) return;
-  const kutu = document.getElementById('soru');
-  if (kutu) kutu.value = '"' + (b.konu || '') + '" konulu maili özetle ve ne yapmam ' +
+  const istek = '"' + (b.konu || '') + '" konulu maili özetle ve ne yapmam ' +
     'gerektiğini söyle (id: ' + b.id + ').';
+  // Sesli moddaki şeritten de tıklanabiliyor; orada yazı kutusu yerine
+  // doğrudan sesli akışa verilir, cevap sesli gelir.
+  if (gorunum === 'ses') return Ses.gonder(istek);
+  const kutu = document.getElementById('soru');
+  if (kutu) kutu.value = istek;
   sor();
 }
 
@@ -960,18 +969,133 @@ function defterAc(hangi) {
   defterOdak = hangi;
   acikProje = null;
   etiketSuzgeci = null;
+  sesliModdanCik();
   ciz();
   window.scrollTo(0, 0);
 }
 
-function konusmayaDon() { gorunum = 'konusma'; ciz(); odaklan(); }
+function konusmayaDon() {
+  gorunum = 'konusma';
+  sesliModdanCik();
+  ciz();
+  odaklan();
+}
 function projeAc(ad) { acikProje = acikProje === ad ? null : ad; etiketSuzgeci = null; ciz(); }
 function suz(e) { etiketSuzgeci = e; ciz(); }
 
 function ciz() {
   cizKunye();
+  const sesli = gorunum === 'ses';
+  document.getElementById('sutun').hidden = sesli;
+  document.getElementById('ses-ekran').hidden = !sesli;
+  document.getElementById('ses-yan').hidden = !sesli;
+  document.querySelector('.tabaka').classList.toggle('uc-kolon', sesli);
+  if (sesli) { sahneHazirla(); cizSesYan(); return cizSes(); }
   document.getElementById('sutun').innerHTML =
     gorunum === 'defter' ? cizDefter() : cizKonusma();
+}
+
+// ------------------------------------------------------------------ sesli mod
+
+// Sahne bir kez kurulur ve modlar arasında yaşamaya devam eder; her girişte
+// yeniden yüklemek hem yavaş hem de boşuna.
+let sahneKuruldu = false;
+
+function sahneHazirla() {
+  if (sahneKuruldu) return;
+  Avatar.baslat(document.getElementById('ses-sahne'), { spline: SPLINE_URL });
+  Ses.baglaCizim(cizSes);
+  sahneKuruldu = true;
+}
+
+function sesliModaGec() {
+  gorunum = 'ses';
+  ciz();
+  window.scrollTo(0, 0);
+}
+
+function sesliModdanCik() {
+  if (typeof Ses !== 'undefined') Ses.kapat();
+}
+
+// Spline sahnesinin yayın bağlantısı. Boşken kendi çizdiğimiz küre kullanılır —
+// ikisi de aynı üç fonksiyonu konuştuğu için panelde başka hiçbir şey değişmez.
+const SPLINE_URL = '';
+
+function cizSes() {
+  const h = Ses.hal();
+  const bos = !h.balon;
+  const benim = h.durum === 'dinliyor' || h.durum === 'dusunuyor';
+
+  const yazilar = {
+    bosta: 'Konuşmak için mikrofona basılı tutun.',
+    dinliyor: 'Dinliyorum…',
+    dusunuyor: 'Düşünüyorum…',
+    konusuyor: 'Konuşuyor…',
+  };
+
+  let s = '<div class="ses-balon' + (benim ? ' benim' : '') + (bos ? ' bos' : '') + '">' +
+    (bos ? 'Bugün ne konuşalım?' : kacir(h.balon)) + '</div>';
+  s += '<div class="ses-durum">' + yazilar[h.durum] + '</div>';
+  s += '<div class="ses-dugmeler">' +
+    '<button class="mikrofon' + (h.durum === 'dinliyor' ? ' acik' : '') + '"' +
+    (h.destekli ? '' : ' disabled') +
+    ' title="Basılı tutun, konuşun, bırakın"' +
+    ' onmousedown="Ses.dinlemeyeBasla()" onmouseup="Ses.dinlemeyiBitir()"' +
+    ' onmouseleave="Ses.dinlemeyiBitir()"' +
+    ' ontouchstart="event.preventDefault();Ses.dinlemeyeBasla()"' +
+    ' ontouchend="Ses.dinlemeyiBitir()">🎙</button>' +
+    '<button class="btn" onclick="konusmayaDon()">Yazıya dön</button>' +
+    '</div>';
+
+  // Konuşamayacağınız yerde de sorulabilsin: aynı akış, elle yazılmış soru.
+  const mesgul = h.durum === 'dusunuyor' || h.durum === 'konusuyor';
+  s += '<div class="ses-yazi">' +
+    '<input type="text" id="ses-soru" placeholder="Ya da yazın…"' +
+    (mesgul ? ' disabled' : '') +
+    ' onkeydown="if(event.key===\'Enter\')sesliSor()">' +
+    '<button class="btn btn-primary" onclick="sesliSor()"' +
+    (mesgul ? ' disabled' : '') + '>Söyle</button></div>';
+
+  if (h.uyari) s += '<div class="ses-uyari">' + kacir(h.uyari) + '</div>';
+
+  document.getElementById('ses-yuz').innerHTML = s;
+  const kutu = document.getElementById('ses-soru');
+  if (kutu && !mesgul && sesKutusuOdakli) kutu.focus();
+}
+
+// Kutu her çizimde yeniden kuruluyor; odak ancak kullanıcı oraya bir kez
+// dokunduysa geri verilir, yoksa sayfa açılır açılmaz imleç kutuya zıplar.
+let sesKutusuOdakli = false;
+
+function sesliSor() {
+  const kutu = document.getElementById('ses-soru');
+  if (!kutu) return;
+  const soru = kutu.value.trim();
+  if (!soru) return;
+  kutu.value = '';
+  sesKutusuOdakli = true;
+  Ses.gonder(soru);
+}
+
+// Sağ şerit: tarama ve günün önemli mailleri. Yalnızca sesli modda çizilir —
+// konuşma ekranında bunlar akışın içinde zaten var.
+function cizSesYan() {
+  let s = '<div class="yan-baslik">Tarama</div>';
+  s += '<div><button class="btn btn-primary" onclick="tara()"' +
+    (taraniyor ? ' disabled' : '') + '>' +
+    (taraniyor ? 'taranıyor…' : 'şimdi tara') + '</button></div>';
+  s += taramaCiz();
+  if (D.brifing_zamani) s += brifingDamgasi();
+
+  s += '<div class="yan-baslik">Önemli mailler</div>';
+  const bildirimler = bildirimleriCiz();
+  s += bildirimler || '<p class="yan-bos">Gün içinde eşiği geçen mail olmadı.</p>';
+
+  const onaylar = onaylariCiz();
+  if (onaylar) s += '<div class="yan-baslik">Onayınızı bekleyen</div>' + onaylar;
+
+  document.getElementById('ses-yan').innerHTML = s;
 }
 
 // Onay satırında taslak metnini gösterebilmek için gövdelerini önden okur.
@@ -1044,6 +1168,11 @@ function yenilemeUygunMu() {
   if (ortu && !ortu.hidden) return false;            // açık pencere kapanmasın
   const kutu = document.getElementById('soru');
   if (kutu && (kutu.value.trim() || document.activeElement === kutu)) return false;
+  const sesKutu = document.getElementById('ses-soru');
+  if (sesKutu && (sesKutu.value.trim() || document.activeElement === sesKutu)) return false;
+  // Sesli modda konuşma sürerken çizim balonu tazeler; ses kesilmez ama
+  // kullanıcının okuduğu satırı ortasından değiştirmenin anlamı yok.
+  if (typeof Ses !== 'undefined' && Ses.hal().durum !== 'bosta') return false;
   return true;
 }
 
