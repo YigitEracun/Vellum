@@ -426,12 +426,19 @@ body {
 }
 .ses-ekran {
   display: flex; flex-direction: column; min-width: 0;
-  height: 100vh; min-height: 0; overflow: hidden;
+  height: 100vh; min-height: 0;
+  /* Kırpma değil kaydırma: alçak bir pencerede taşan şey yazı kutusu oluyordu
+     ve kutuya tıklanamıyordu. Sahne zaten küçülüyor, yetmezse sayfa kayar. */
+  overflow-y: auto;
   padding: var(--space-7) var(--space-8) var(--space-8);
   background: var(--color-bg);
 }
-.ses-sahne { flex: 1 1 auto; min-height: 120px; position: relative; }
-.avatar-tuval { display: block; }
+/* Sahne ilk küçülen: balon, mikrofon ve yazı kutusu her zaman görünür kalmalı.
+   overflow gizli, çünkü tuval bir an için kabından büyük ölçülebiliyor ve
+   taşan tuval altındaki yazı kutusunun tıklamalarını yutuyordu. */
+.ses-sahne { flex: 1 1 auto; min-height: 110px; position: relative; overflow: hidden; }
+/* Tuval süs: hiçbir tıklama ona ait değil. */
+.avatar-tuval { display: block; pointer-events: none; }
 .ses-yuz { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center;
   gap: var(--space-5); }
 
@@ -501,9 +508,11 @@ body {
   .mikrofon { transition: none; }
 }
 @media (max-width: 760px) {
-  .ses-ekran { padding: var(--space-5); }
-  .ses-sahne { min-height: 180px; }
-  .tabaka.uc-kolon { grid-template-columns: 1fr; }
+  .ses-ekran { padding: var(--space-5); height: auto; min-height: 70vh; }
+  .ses-sahne { min-height: 140px; }
+  /* Mobilde üç kolon alt alta iner; tek pencereye sığdırmaya çalışmak
+     kolonlardan birini kırpar. */
+  .tabaka.uc-kolon { grid-template-columns: 1fr; height: auto; overflow: visible; }
   .ses-yan { border-left: 0; border-top: 1px solid var(--color-divider); max-height: none; }
 }
 

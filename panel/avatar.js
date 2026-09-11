@@ -4,17 +4,15 @@
 //   Avatar.durum(d)            'bosta' | 'dinliyor' | 'dusunuyor' | 'konusuyor'
 //   Avatar.seviye(0..1)        anlık ses şiddeti
 //
-// İki gövdesi var. Varsayılan olan burada çizilen küre: çevrimdışı çalışır,
-// rozet göstermez, kimseye bağımlı değildir. Spline sahnesinin yayın bağlantısı
-// verilirse (ayar.spline) onun yerine o yüklenir — panel farkı bilmez, çünkü
-// dışarı açılan üç fonksiyon aynıdır.
+// Küre burada, canvas üzerinde çiziliyor: çevrimdışı çalışır, dosya indirmez,
+// rozet göstermez, kimseye bağımlı değildir. Hazır bir 3D sahne (Spline vb.)
+// denendi ve bırakıldı — ücretsiz planı köşeye rozet koyuyor, ağ istiyor ve bu
+// kürenin verdiğinden fazlasını vermiyordu.
 
 const Avatar = (function () {
   let kap = null;
   let tuval = null, ctx = null, olcek = 1;
   let kare = null;            // requestAnimationFrame kimliği
-  let sahneTuru = 'tuval';    // 'tuval' | 'spline'
-  let spline = null;
 
   let durumAdi = 'bosta';
   let hedefSeviye = 0, anlikSeviye = 0;
@@ -31,43 +29,24 @@ const Avatar = (function () {
     konusuyor:  { ic: '#0f6cbd', dis: '#ebf3fc' },
   };
 
-  function baslat(hedefKap, ayar) {
+  function baslat(hedefKap) {
     kap = hedefKap;
-    ayar = ayar || {};
-    if (ayar.spline) return splineKur(ayar.spline);
     return tuvalKur();
-  }
-
-  // ---------------------------------------------------------------- spline
-
-  function splineKur(url) {
-    sahneTuru = 'spline';
-    const viewer = document.createElement('spline-viewer');
-    viewer.setAttribute('url', url);
-    viewer.style.width = '100%';
-    viewer.style.height = '100%';
-    kap.innerHTML = '';
-    kap.appendChild(viewer);
-    spline = viewer;
-    // Sahne yüklenemezse (ağ yok, bağlantı bozuk) kendi küremize düşeriz;
-    // sesli mod sahnesiz de çalışmalı.
-    viewer.addEventListener('error', tuvalKur);
-    setTimeout(function () {
-      if (sahneTuru === 'spline' && !viewer.shadowRoot) tuvalKur();
-    }, 8000);
   }
 
   // ----------------------------------------------------------------- tuval
 
   function tuvalKur() {
-    sahneTuru = 'tuval';
-    spline = null;
     tuval = document.createElement('canvas');
     tuval.className = 'avatar-tuval';
     kap.innerHTML = '';
     kap.appendChild(tuval);
     ctx = tuval.getContext('2d');
     olcekle();
+    // Kabın boyu pencere değişmeden de değişiyor: balon uzayınca sahne kısalır.
+    // Yalnızca resize'ı dinlemek tuvali eski boyunda bırakıyor, o da alttaki
+    // yazı kutusunun üstüne taşıyordu.
+    if (window.ResizeObserver) new ResizeObserver(olcekle).observe(kap);
     window.addEventListener('resize', olcekle);
     dongu();
   }
@@ -191,11 +170,6 @@ const Avatar = (function () {
   function durum(d) {
     durumAdi = d || 'bosta';
     if (d !== 'konusuyor' && d !== 'dinliyor') hedefSeviye = 0;
-    if (spline && spline.emitEvent) {
-      // Spline sahnesinde durum adıyla aynı olay varsa tetiklenir; yoksa
-      // sessizce yutulur — sahne kimin hazırladığına göre farklı isimlendirir.
-      try { spline.emitEvent('mouseDown', durumAdi); } catch (e) {}
-    }
   }
 
   function seviye(x) {
@@ -207,5 +181,5 @@ const Avatar = (function () {
     kare = null;
   }
 
-  return { baslat, durum, seviye, durdur, tur: () => sahneTuru };
+  return { baslat, durum, seviye, durdur };
 })();

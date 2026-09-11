@@ -1003,7 +1003,7 @@ let sahneKuruldu = false;
 
 function sahneHazirla() {
   if (sahneKuruldu) return;
-  Avatar.baslat(document.getElementById('ses-sahne'), { spline: SPLINE_URL });
+  Avatar.baslat(document.getElementById('ses-sahne'));
   Ses.baglaCizim(cizSes);
   sahneKuruldu = true;
 }
@@ -1017,10 +1017,6 @@ function sesliModaGec() {
 function sesliModdanCik() {
   if (typeof Ses !== 'undefined') Ses.kapat();
 }
-
-// Spline sahnesinin yayın bağlantısı. Boşken kendi çizdiğimiz küre kullanılır —
-// ikisi de aynı üç fonksiyonu konuştuğu için panelde başka hiçbir şey değişmez.
-const SPLINE_URL = '';
 
 function cizSes() {
   const h = Ses.hal();
