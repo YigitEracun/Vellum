@@ -199,6 +199,11 @@ sayılmaz, konuşmayı kaybetmekten iyidir.
 
 ---
 
+Neyin ne zaman ve **neden** değiştiği: [CHANGELOG.md](CHANGELOG.md)
+(aynı içeriğin Word hâli: `Vellum - Degisiklik Gunlugu.docx`).
+
+---
+
 ## Kurulum
 
 Gereken: Python 3.12.
