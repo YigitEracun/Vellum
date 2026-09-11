@@ -391,6 +391,73 @@ def _slug(ad):
     return re.sub(r"-{2,}", "-", t).strip("-")
 
 
+def _hafiza():
+    import hafiza
+    return hafiza
+
+
+@beta_tool
+def hatirla(tur: str, anahtar: str, deger: str, kelimeler: str = "",
+            adres: str = "") -> str:
+    """Kullanıcı hakkında kalıcı bir bilgiyi hafızaya yazar.
+
+    Her lafı değil, tekrar işine yarayacak olanı kaydet: mesleği, sürekli
+    ilgilendiği konular, sık gittiği yerler, sık görüştüğü kişiler, düzenli
+    alışkanlıkları. Geçici şeyler (bugünkü ruh hâli, tek seferlik bir iş)
+    hafızaya girmez. Aynı bilgiyi yeniden yazmak zararsızdır: pekişir.
+
+    Args:
+        tur: meslek | ilgi | yer | kisi | alistigi
+        anahtar: Kısa etiket, örn. "mimarlık", "yelken", "Bodrum", "Ayşe".
+        deger: Tek cümlelik açıklama, örn. "Kullanıcı mimar, ruhsat işleri".
+        kelimeler: Bu konuyu maillerde ele verecek kelimeler, virgülle:
+            "mimar, ruhsat, imar". Boş bırakılırsa anahtar kullanılır.
+        adres: Kişiyse mail adresi.
+    """
+    try:
+        olgu = _hafiza().yaz(
+            tur, anahtar, deger, kaynak="sohbet",
+            kelimeler=[k for k in (kelimeler or "").split(",")],
+            adres=adres or None)
+    except ValueError as e:
+        return "HATA: %s" % e
+    except Exception as e:
+        return "HATA: hafizaya yazilamadi: %s" % e
+    return "hatirlandi: %s — %s (%d. kez, id: %s)" % (
+        olgu["anahtar"], olgu["deger"], olgu["gorulme"], olgu["id"])
+
+
+@beta_tool
+def unut(kimlik: str) -> str:
+    """Hafızadaki bir bilgiyi düşürür.
+
+    Kullanıcı bir bilginin yanlış olduğunu ya da artık geçerli olmadığını
+    söylediğinde kullan. Kayıt silinmez, yalnızca artık kullanılmaz.
+
+    Args:
+        kimlik: Olgunun id'si, örn. "h_1a2b3c4d". Bilmiyorsan önce
+            hafiza_listele ile bak.
+    """
+    try:
+        oldu = _hafiza().unut(kimlik)
+    except Exception as e:
+        return "HATA: %s" % e
+    return "unutuldu: " + kimlik if oldu else "HATA: boyle bir kayit yok: " + kimlik
+
+
+@beta_tool
+def hafiza_listele() -> str:
+    """Hafızadaki bilgileri kimlikleriyle listeler."""
+    olgular = _hafiza().turet()
+    if not olgular:
+        return "(hafiza bos)"
+    return "\n".join(
+        "%s | %s | %s — %s (agirlik %d, %d kez)"
+        % (o["id"], o.get("tur"), o.get("anahtar"), o.get("deger") or "",
+           _hafiza().guncel_agirlik(o), o.get("gorulme") or 1)
+        for o in olgular)
+
+
 def _projeler():
     kok_p = os.path.join(KOK, "projects")
     if not os.path.isdir(kok_p):
@@ -427,7 +494,8 @@ YAZMA_ARACLARI = [dosya_oku, dosya_listele, ek_oku, dosya_yaz, dosya_ekle]
 # Sohbet okur, takvime yazar ve projeye not düşer — ama serbest dosya yazma
 # hâlâ yok: brifing dosyalarını ve yapılandırmayı elle değiştiremez.
 SOHBET_ARACLARI = OKUMA_ARACLARI + [takvim_ekle, takvim_iptal,
-                                    proje_olay_ekle, proje_ac]
+                                    proje_olay_ekle, proje_ac,
+                                    hatirla, unut, hafiza_listele]
 
 
 # ------------------------------------------------------------------- calistir
@@ -528,7 +596,14 @@ def cekirdek_sistemi():
         "dosya_listele ile projects/ altına bak; uygun proje yoksa kullanıcıya "
         "yeni proje açmayı öner, onay verirse proje_ac kullan — kendiliğinden "
         "proje uydurma. Mail ve mesaj GÖNDERMEK bu araçların dışındadır: "
-        "gönderim yalnızca kullanıcının panelden onayladığı taslaklarla olur."
+        "gönderim yalnızca kullanıcının panelden onayladığı taslaklarla olur.\n\n"
+        "Kullanıcıyı tanı. Kendisi hakkında kalıcı bir şey söylediğinde — "
+        "mesleği, sürekli ilgilendiği bir konu, sık gittiği bir yer, sık "
+        "görüştüğü biri, düzenli bir alışkanlığı — `hatirla` ile kaydet. Her "
+        "lafı değil, ileride işine yarayacak olanı; bugünkü havası ya da tek "
+        "seferlik bir iş hafızaya girmez. Kaydettiğini lafı uzatmadan söyle "
+        "('bunu aklımda tutuyorum' gibi tek cümle). Bir bilginin yanlış ya da "
+        "artık geçerli olmadığını söylerse `unut` kullan."
     )
     return "\n\n---\n\n".join(parcalar)
 
@@ -594,6 +669,14 @@ def sohbet(soru, gecmis=None, ses=False):
     simdi = datetime.now(TZ)
     ekler = ["Şu an: %s (%s)." % (simdi.isoformat(timespec="minutes"),
                                  GUNLER[simdi.weekday()])]
+    # Hafıza özeti de burada: önbelleğe alınan sabit öneke karışmaz, her
+    # öğrenilen bilgide önbelleği boşa düşürmez.
+    try:
+        ozet = _hafiza().ozet()
+    except Exception:
+        ozet = ""
+    if ozet:
+        ekler.append(ozet)
     if ses:
         ekler.append(SESLI_YONERGE)
 
@@ -713,6 +796,17 @@ def brief(ilerleme=None):
                        % (len(digest["maddeler"]), ESIK))
     bildir(mail_sonucu or "%d mail skorlandi, %d tanesi ozetlenecek."
            % (len(digest["maddeler"]), len(bekleyen)))
+
+    # Hafıza sayımı: kiminle sık yazışıldığı, hangi adın tekrar ettiği. Saf
+    # Python, model çağrılmaz — bu yüzden brifingin maliyetine hiçbir şey
+    # eklemez. Skorlamadan sonra çalışır ki taze digest'i görsün.
+    try:
+        import sayim
+        yazilan = sayim.calistir()
+        if yazilan:
+            bildir("Hafiza sayimi: %d bilgi tazelendi." % yazilan)
+    except Exception as hata:
+        bildir("Hafiza sayimi atlandi: %s" % hata)
 
     # Diğer toplayıcılar ham veri dosyasına bakar; kaynak bağlı değilse çağrılmaz.
     isler = {

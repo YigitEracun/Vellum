@@ -354,6 +354,7 @@ def yazistiklarim(zorla=False):
     adres, sifre = ayarlar()
     kutu = imaplib.IMAP4_SSL(SUNUCU, 993)
     adresler = set()
+    sayilar = {}          # adres -> kac maile yazdiniz (hafiza bunu kullanir)
     try:
         kutu.login(adres, sifre)
         klasor = _gonderilenler_klasoru(kutu)
@@ -372,7 +373,9 @@ def yazistiklarim(zorla=False):
             for baslik in ("To", "Cc"):
                 for _, posta in email.utils.getaddresses([mesaj.get(baslik) or ""]):
                     if posta:
-                        adresler.add(posta.lower())
+                        p = posta.lower()
+                        adresler.add(p)
+                        sayilar[p] = sayilar.get(p, 0) + 1
     finally:
         try:
             kutu.logout()
@@ -380,10 +383,15 @@ def yazistiklarim(zorla=False):
             pass
 
     adresler.discard(adres.lower())      # kendinize yazdıklarınız sayılmaz
+    sayilar.pop(adres.lower(), None)
     os.makedirs(os.path.dirname(YAZISTIKLARIM_DOSYASI), exist_ok=True)
+    # `adresler` alanı korunuyor: skorlama.yazistiklarim() onu okuyor ve
+    # "yazıştınız mı" sorusuna evet/hayır cevabı yeterli. `sayilar` hafızanın
+    # sıklık hesabı için eklendi.
     with io.open(YAZISTIKLARIM_DOSYASI, "w", encoding="utf-8") as f:
         json.dump({"guncelleme": datetime.now(TZ).isoformat(),
-                   "adresler": sorted(adresler)}, f, ensure_ascii=False, indent=2)
+                   "adresler": sorted(adresler),
+                   "sayilar": sayilar}, f, ensure_ascii=False, indent=2)
     return adresler
 
 

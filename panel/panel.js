@@ -11,7 +11,7 @@ let D = null;                 // /api/durum çıktısı
 // konuşmayı iki yerde göstermek ikisini de yarım bırakıyordu. Geçmiş turlar
 // Defter'in Sohbet sekmesinde duruyor.
 let gorunum = 'ses';          // 'ses' | 'defter'
-let defterOdak = 'projeler';  // 'projeler' | 'takvim' | 'konular' | 'posta' | 'mesaj' | 'sohbet' | 'arsiv'
+let defterOdak = 'projeler';  // 'projeler' | 'takvim' | 'konular' | 'hafiza' | 'posta' | 'mesaj' | 'sohbet' | 'arsiv'
 let acikProje = null;
 let etiketSuzgeci = null;
 let sohbetGecmisi = [];
@@ -137,6 +137,10 @@ function bugununEtkinlikleri() {
     .sort((a, b) => a.baslangic.localeCompare(b.baslangic));
 }
 
+function hafizaSayisi() {
+  return (D.hafiza || []).reduce((n, g) => n + g.olgular.length, 0);
+}
+
 function sessizProjeler() {
   return (D.projeler || []).filter(p => {
     const sh = p.durum && p.durum.son_hareket;
@@ -170,6 +174,7 @@ function cizKunye() {
     ajanSatiri('takvim', null, 'Takvim', bekleyenEtkinlik) +
     ajanSatiri('konular', null, 'Konular',
       ((D.konular && D.konular.kendi) || []).length) +
+    ajanSatiri('hafiza', null, 'Hafıza', hafizaSayisi()) +
     ajanSatiri('sohbet', null, 'Sohbet', sohbetGecmisi.length) +
     ajanSatiri('arsiv', null, 'Arşiv', (D.arsiv || []).length) +
     '</div></div>';
@@ -343,6 +348,7 @@ function cizDefter() {
   else if (defterOdak === 'mesaj') s += defterMesaj();
   else if (defterOdak === 'takvim') s += defterTakvim();
   else if (defterOdak === 'konular') s += defterKonular();
+  else if (defterOdak === 'hafiza') s += defterHafiza();
   else if (defterOdak === 'sohbet') s += defterSohbet();
 
   // Gezinme künyeye taşındı; alttaki etiket şeridi kaldırıldı.
@@ -351,7 +357,7 @@ function cizDefter() {
 
 function defterBasligi(hangi) {
   const ad = { projeler: 'Projeler', takvim: 'Takvim', konular: 'Konular',
-    arsiv: 'Arşiv', posta: 'Posta', mesaj: 'Mesaj', sohbet: 'Sohbet' };
+    arsiv: 'Arşiv', posta: 'Posta', mesaj: 'Mesaj', sohbet: 'Sohbet', hafiza: 'Hafıza' };
   return ad[hangi || defterOdak] || 'Defter';
 }
 
@@ -785,6 +791,68 @@ async function etkinlikEkle(anahtar) {
 
 async function etkinlikKaldir(id) {
   const r = await cagir('/api/etkinlik-iptal', { id: id });
+  if (r.hata) { hataMetni = r.hata; return ciz(); }
+  await yenile();
+}
+
+// Vellum'un kullanıcı hakkında öğrendikleri. Hiçbir ağırlık sessiz uygulanmaz:
+// ne öğrendiği burada yazılı, mailin sinyal satırında da "hafiza:..." görünür.
+function defterHafiza() {
+  const gruplar = D.hafiza || [];
+  let s = '<p class="ses">Vellum sizi kullandıkça tanıyor: konuşurken ' +
+    'söyledikleriniz ve verinin kendisinden sayılanlar buraya düşüyor. ' +
+    'Öğrendiği her şey maillerin önem sırasına da giriyor — yanlış olanı ' +
+    'kaldırın, önemini değiştirmek isterseniz önceliğini seçin. ' +
+    'Bu liste bu bilgisayarda kalır, sürüm kontrolüne girmez.</p>';
+
+  if (!gruplar.length) {
+    return s + '<p class="bos">Henüz bir şey öğrenilmedi. Sesli modda ' +
+      'kendinizden söz edin — mesleğiniz, sık görüştüğünüz kişiler, ' +
+      'ilgilendiğiniz konular — ya da bir tarama yapın.</p>';
+  }
+
+  gruplar.forEach(g => {
+    s += '<p class="ayrac">' + kacir(g.baslik) + '</p><div class="liste">';
+    g.olgular.forEach(o => {
+      const ag = o.guncel_agirlik;
+      s += '<div class="liste-satir"><div class="govde">' +
+        '<p><b>' + kacir(o.anahtar) + '</b> ' +
+        '<span class="rozet-kucuk' + (ag < 0 ? ' dusuk' : '') + '">' +
+        kacir(oncelikAdi(ag)) + '</span></p>' +
+        '<p class="alt kaynak">' + kacir(o.deger || '') + '</p>' +
+        '<p class="alt kaynak">' +
+        (o.kaynak === 'sayim' ? 'verinizden sayıldı'
+          : o.kaynak === 'elle' ? 'önemini siz belirlediniz' : 'konuşurken öğrenildi') +
+        ' · ' + (o.gorulme || 1) + ' kez doğrulandı' +
+        (o.bayat ? ' · uzun süredir tazelenmedi, etkisi azaldı' : '') +
+        (o.adres ? ' · ' + kacir(o.adres) : '') +
+        '</p></div>' +
+        '<span class="onay-dugmeler">' +
+        '<select onchange="hafizaAgirlik(\'' + kacir(o.id) + '\', this.value)">' +
+        ONCELIKLER.map(x => '<option value="' + x.deger + '"' +
+          (x.deger === enYakinOncelik(ag) ? ' selected' : '') + '>' +
+          x.ad + '</option>').join('') + '</select>' +
+        '<button class="baglanti" onclick="hafizaUnut(\'' + kacir(o.id) + '\')">unut</button>' +
+        '</span></div>';
+    });
+    s += '</div>';
+  });
+  return s;
+}
+
+function enYakinOncelik(deger) {
+  return ONCELIKLER.reduce((a, b) =>
+    Math.abs(b.deger - deger) < Math.abs(a.deger - deger) ? b : a).deger;
+}
+
+async function hafizaUnut(id) {
+  const r = await cagir('/api/hafiza-unut', { id: id });
+  if (r.hata) { hataMetni = r.hata; return ciz(); }
+  await yenile();
+}
+
+async function hafizaAgirlik(id, agirlik) {
+  const r = await cagir('/api/hafiza-agirlik', { id: id, agirlik: Number(agirlik) });
   if (r.hata) { hataMetni = r.hata; return ciz(); }
   await yenile();
 }

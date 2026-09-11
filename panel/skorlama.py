@@ -21,6 +21,10 @@ TABAN = 30
 ESIK_AKSIYON = 70      # brifingin başında, aksiyon maddesi
 ESIK_BILGI = 40        # "bilgin olsun" satırı; altı yalnızca sayı
 
+# Hafızanın bir maile toplam katkısı. Yanlış öğrenilmiş tek bir olgu ne bir
+# maili gömebilmeli ne de tepeye çıkarabilmeli.
+HAFIZA_TAVANI = 40
+
 # Toplu gönderim yapan adreslerin deseni. List-Unsubscribe başlığı kesin sinyaldir;
 # bu desenler onu taşımayan otomatik göndericileri de yakalar.
 OTOMATIK_DESEN = re.compile(
@@ -274,10 +278,42 @@ def _adres(metin):
     return e.group(0).lower() if e else ""
 
 
+# --------------------------------------------------------------------- hafıza
+
+def _hafiza_kur(girdi=None):
+    """Hafıza olgularını kalıplara çevirir.
+
+    Aynı ağırlıktaki kelimeler tek kalıpta toplanır; her olgu için ayrı regex
+    derlemek 50 olguda 50 tarama demekti. Hafıza yoksa ya da modül bulunmuyorsa
+    boş döner — skorlama hafızasız da çalışmalı.
+    """
+    if girdi is None:
+        try:
+            import hafiza
+            girdi = hafiza.skorlama_girdisi()
+        except Exception:
+            girdi = {"kelimeler": [], "kisiler": {}}
+
+    kovalar = {}
+    for k in girdi.get("kelimeler") or []:
+        anahtar = k.get("anahtar") or k.get("kelime")
+        kova = kovalar.setdefault((int(k.get("agirlik") or 0), anahtar), [])
+        kova.append(k.get("kelime"))
+
+    kaliplar = []
+    for (agirlik, anahtar), govdeler in sorted(kovalar.items()):
+        govdeler = [g for g in govdeler if g]
+        if not govdeler or not agirlik:
+            continue
+        # Ek duyarlı kalıp: "mimar" olgusu "mimarın", "mimarlığı" da yakalar.
+        kaliplar.append((anahtar, agirlik, kalip_kur(govdeler)))
+    return kaliplar, dict(girdi.get("kisiler") or {})
+
+
 class Skorlayici(object):
     """Rubriği uygular. Kullanıcı ve listeler dışarıdan verilebilir (test için)."""
 
-    def __init__(self, kullanici=None, vip=None, gurultu=None):
+    def __init__(self, kullanici=None, vip=None, gurultu=None, hafiza_girdisi=None):
         if kullanici is None:
             benim = kullanici_adresleri()
         elif isinstance(kullanici, str):
@@ -295,6 +331,9 @@ class Skorlayici(object):
         # sonraki skorlama yeni Skorlayici ile kurulur ve değişikliği görür.
         self.kaliplar = _kaliplar()
         self.yazistiklarim = set(yazistiklarim())
+        # Hafıza: sistemin kullanıcı hakkında öğrendikleri. Boş olduğunda
+        # skorlar hafıza öncesiyle birebir aynı kalır.
+        self.hafiza_kaliplari, self.hafiza_kisileri = _hafiza_kur(hafiza_girdisi)
 
     def skorla(self, m):
         """Bir ham mail kaydını puanlar. Dönen alanlar digest şemasıyla uyumludur."""
@@ -374,6 +413,35 @@ class Skorlayici(object):
                     ekle(ad, agirlik)
             if SORU_DESEN.search(konu) or SORU_DESEN.search(govde[:600]):
                 ekle("soru", +15)
+
+        # Hafıza en sonda: sistemin kullanıcı hakkında öğrendikleri. Diğer
+        # sinyallerden sonra gelir çünkü onların hepsi ya açık tercih ya da
+        # doğrudan davranış; hafıza türetilmiş bir tahmin.
+        hafiza_toplam = 0
+
+        def hafiza_ekle(ad, etki):
+            """Tavanı aşmayacak kadarını uygular; aşarsa kırpar."""
+            nonlocal hafiza_toplam
+            kalan = HAFIZA_TAVANI - abs(hafiza_toplam)
+            if kalan <= 0:
+                return
+            etki = max(-kalan, min(kalan, etki))
+            hafiza_toplam += etki
+            ekle(ad, etki)
+
+        # Sık yazışılan kişi: VIP (+40) ve yazistiginiz-kisi (+35) zaten
+        # sayıldıysa tekrarlamaz — aynı ilişki iki kez ödüllendirilmemeli.
+        if (gonderen and gonderen in self.hafiza_kisileri
+                and gonderen not in self.vip
+                and gonderen not in self.yazistiklarim):
+            hafiza_ekle("sik-yazisilan", self.hafiza_kisileri[gonderen])
+
+        # İçerik sinyalleriyle aynı kural: bültende geçen "mimarlık" sizin
+        # işiniz değil, pazarlama metnidir.
+        if icerik_sayilir:
+            for anahtar, agirlik, kalip in self.hafiza_kaliplari:
+                if kalip and kalip.search(metin):
+                    hafiza_ekle("hafiza:" + anahtar, agirlik)
 
         return {
             "ham_skor": puan,

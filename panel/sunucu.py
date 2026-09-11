@@ -172,6 +172,7 @@ def toplu_durum():
         "sohbet": sohbet_gecmisi(),
         "takvim": takvim_penceresi(),
         "konular": konular_durumu(),
+        "hafiza": hafiza_durumu(),
         "mail": oku_json("state/inbox-digest.json", {}),
         "sosyal": oku_json("state/social-queue.json", {}),
         "projeler": projeler,
@@ -588,6 +589,35 @@ def sohbet(govde):
         return {"hata": anlasilir_hata(hata)}
 
 
+def hafiza_durumu():
+    """Hafıza sekmesinin verisi: türlere göre gruplu olgular."""
+    try:
+        import hafiza
+        return hafiza.gruplu()
+    except Exception:
+        return []
+
+
+def hafiza_unut(govde):
+    import hafiza
+    kimlik = (govde.get("id") or "").strip()
+    if not hafiza.unut(kimlik):
+        return {"hata": "Böyle bir kayıt yok."}
+    return {"tamam": True}
+
+
+def hafiza_agirlik(govde):
+    import hafiza
+    kimlik = (govde.get("id") or "").strip()
+    try:
+        agirlik = int(govde.get("agirlik"))
+    except (TypeError, ValueError):
+        return {"hata": "Ağırlık bir sayı olmalı."}
+    if not hafiza.agirlik_degistir(kimlik, agirlik):
+        return {"hata": "Böyle bir kayıt yok."}
+    return {"tamam": True}
+
+
 def seslendir(govde):
     """Metni mp3'e cevirir, panelin calabilecegi adresi doner.
 
@@ -726,6 +756,8 @@ ROTALAR = {
     "/api/kategori": kategori_degistir,
     "/api/kisi-ekle": kisi_ekle,
     "/api/kisi-sil": kisi_sil,
+    "/api/hafiza-unut": hafiza_unut,
+    "/api/hafiza-agirlik": hafiza_agirlik,
 }
 
 

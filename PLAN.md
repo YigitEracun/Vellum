@@ -675,3 +675,39 @@ kullanıcının panelden onayladığı taslaklarla gider.
 - `_durumu_tazele()` hesabı sunucuya yaptırıyor ama sunucunun kendi `KOK`'u var. Testler
   `beyin.KOK`'u geçici dizine aldığında `durum.json` gerçek `projects/` altına yazıldı ve
   olmayan proje klasörlerini açtı. Kökler ayrıştığında tazeleme atlanıyor.
+
+---
+
+## 17. Kullanıcı hafızası (2026-09-11)
+
+Sistem kullanıcı hakkında hiçbir şey bilmiyordu. Skorlama üç kaynaktan besleniyordu ve
+üçü de ya elle giriliyordu ya tek bir davranışa bakıyordu. İstenen: asistan kullanıldıkça
+kullanıcıyı kendiliğinden tanısın ve öğrendiğini önem ağırlıklarına çevirsin.
+
+**Neden ayrı depo.** `state/konular.json` bir *ayar* dosyası: bilinçli tercihler, üzerine
+yazılır. Hafıza bir *geçmiş*: ne zaman, nereden öğrenildi, kaç kez doğrulandı. Aynı
+dosyada olsalardı otomatik çıkarım, elle girilmiş tercihi ezerdi. `state/hafiza.jsonl`
+append-only — takvim ve olay günlüğüyle aynı mantık.
+
+**İki yazan.** Sohbette `hatirla` aracı (zaten yapılan çağrının içinde, ek maliyet yok) ve
+taramadan sonra çalışan `panel/sayim.py` (saf Python, model yok): kiminle kaç kez
+yazışıldığı ve eşiği geçen maillerin konularında tekrar eden adlar.
+
+**İki okuyan.** `skorlama.py` hafıza kelimelerini ek duyarlı kalıplara çevirip
+`hafiza:<anahtar>` ve `sik-yazisilan` sinyallerini ekler; `beyin.sohbet` hafıza özetini
+önbelleğe alınmayan ek bloğa koyar, böylece sabit önek bozulmaz.
+
+**Kasten dar tutulan yer:** mail gövdelerinden serbest anahtar kelime madenciliği yok.
+Türkçe ek sorununu bir kez yaşadık; serbest madencilik çöp üretir. Sayım yalnızca özel
+adlara bakar, 3+ kez ve 2+ farklı göndericiden şartıyla.
+
+**Üç sınır, üçü de bilerek:**
+- Hafızanın bir maile toplam katkısı ±40. Yanlış bir bilgi ne gömebilmeli ne çıkarabilmeli.
+- 90 günde yarıya, 180 günde çeyreğe inen ağırlık. Kayıt durur, etkisi söner — "kalıcı"
+  olması etkisinin sonsuza kadar aynı kalması demek değil. Elle ayarlanan bayatlamaz.
+- VIP (+40) ve yazistiginiz-kisi (+35) altında sıralanır ve onlar zaten saydıysa
+  tekrarlamaz: aynı ilişki iki kez ödüllendirilmemeli.
+
+Testler: `scripts/test_hafiza.py` 53 test — türetme, unutma, bayatlama, tavan, sayım
+eşikleri ve skorlamaya etkisi. Hafıza boşken skorların birebir aynı kaldığı da
+doğrulanıyor.

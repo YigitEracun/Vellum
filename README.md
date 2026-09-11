@@ -186,6 +186,8 @@ yol da aynı akışa girer, cevap iki durumda da sesli gelir.
   konuşmanın içinde olduğu için orada tekrarlanmaz.
 - Cevaplar üç cümleyle sınırlanır. Hem kulağa doğru gelir hem de çıktı token'ı azaldığı
   için **eski yazılı sohbetten ucuza** gelir.
+- **Sizi tanıyor.** Konuşurken kendinizden söz ettikçe öğrendiğini kalıcı olarak
+  saklıyor (aşağıya bakın) ve maillerin önem sırasına katıyor.
 - **Takvime ve projeye yazabilir.** "Ayşe ile salı 14:00'te görüşmem var" dediğinizde
   takvime kendisi yazar. Dört dar aracı var — `takvim_ekle`, `takvim_iptal`,
   `proje_olay_ekle`, `proje_ac` — serbest dosya yazması yoktur; brifing dosyalarını ve
@@ -299,6 +301,8 @@ python scripts/seed_ornek_veri.py
 │   ├── sunucu.py          yerel sunucu + canlı izleyici (standart kütüphane)
 │   ├── beyin.py           Çekirdek + ajanlar (Claude API, tool use)
 │   ├── skorlama.py        kural motoru — önem skorlaması, modelsiz
+│   ├── hafiza.py          kullanıcı hafızası (append-only olgu deposu)
+│   ├── sayim.py           veriden sayarak öğrenme, modelsiz
 │   ├── seslendir.py       metin → mp3 (edge-tts), diske cacheler
 │   ├── panel.html         arayüz yerleşimi
 │   ├── panel.js
@@ -314,9 +318,50 @@ python scripts/seed_ornek_veri.py
     ├── test_skorlama.py    kural motorunun birim testleri
     ├── test_takvim.py      takvim deposu ve hatırlatmalar
     ├── test_seslendir.py   metin temizleme ve ses cache'i
+    ├── test_hafiza.py      hafıza deposu, bayatlama, sayım, skora etkisi
     ├── test_sohbet_araclari.py  sohbetin yazma araçları
     └── seed_*.py           demo verisi
 ```
+
+---
+
+## Hafıza
+
+Vellum sizi kullandıkça tanır. Öğrendiği her şey `state/hafiza.jsonl` içinde birer satır
+olarak durur; satır silinmez, unutma da bir satırdır — "ne zamandan beri böyle biliyor"
+sorusu cevaplanabilir kalır.
+
+**İki kaynaktan öğrenir, ikisi de ek ücret doğurmaz:**
+
+- **Konuşmadan.** Sesli modda kendinizden söz ettiğinizde asistan `hatirla` aracıyla
+  kaydeder. Zaten yapılan çağrının içinde çalışır, ayrı bir model çağrısı yoktur.
+- **Sayımdan.** Taramanın sonunda saf Python çalışır: kiminle kaç kez yazıştığınız ve
+  eşiği geçen maillerin konularında tekrar eden adlar. Sayı çıkarım değildir, o yüzden
+  doğrudan uygulanır.
+
+Mail gövdelerinden model çıkarımı **yapılmaz**: her taramaya bir çağrı bindirir ve
+içerik modele daha çok giderdi.
+
+**Öğrenilen bilgi ne işe yarar:**
+
+- **Önem sırası.** Mesleğinizle ilgili bir mail öne çıkar, sık yazıştığınız kişi öne
+  çıkar. Sinyal satırında `hafiza:mimarlık +25` diye görünür — hiçbir ağırlık sessiz
+  uygulanmaz.
+- **Asistanın kendisi.** Hafıza özeti isteme girer, böylece sizi tanıyarak cevap verir.
+
+**Sınırlar, bilerek konmuş:**
+
+- Hafızanın bir maile toplam katkısı **±40** ile sınırlı. Yanlış öğrenilmiş tek bir bilgi
+  ne bir maili gömebilmeli ne de tepeye çıkarabilmeli.
+- Bir bilgi 90 gün doğrulanmazsa ağırlığı yarıya, 180 günde çeyreğine iner. Kayıt yerinde
+  durur, yalnızca etkisi söner: meslek değiştirirseniz eskisi brifinginizi yönetmesin.
+  Önemini elle ayarladıklarınız bayatlamaz.
+- VIP (+40) ve "bu adrese yazdınız" (+35) sinyallerinin **altındadır**. O ikisi açık
+  tercih ve doğrudan davranış; hafıza türetilmiş bir tahmin.
+
+Defter'deki **Hafıza** sekmesinde ne öğrendiği yazılıdır: nereden öğrendiği, kaç kez
+doğrulandığı, ağırlığı. Yanlış olanı kaldırırsınız, önemini değiştirirsiniz. Dosya bu
+bilgisayarda kalır, sürüm kontrolüne girmez.
 
 ---
 
