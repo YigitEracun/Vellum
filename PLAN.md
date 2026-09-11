@@ -367,8 +367,9 @@ Projeyi sen açarsın; agent kendi başına yeni proje yaratmaz, yalnızca öner
 
 ## 10. Arayüz — "Tek Ağız" (Fluent 2)
 
-Arayüz bir gösterge tablosu değil, **bir konuşma**. Claude Design'da üç yön çizildi
-(Sabah Baskısı · Tezgâh · Tek Ağız) ve **1c "Tek Ağız"** seçildi:
+Arayüz bir gösterge tablosu değil, **bir konuşma** — ve sonunda gerçekten konuşan bir
+konuşma oldu. Claude Design'da üç yön çizildi (Sabah Baskısı · Tezgâh · Tek Ağız) ve
+**1c "Tek Ağız"** seçildi:
 
 > Ajan yok, sadece kâtip var. Brifing konuşma olarak gelir, onaylar sohbetin içinde
 > satır satır verilir. Solda ince bir künye ajanların hâlâ orada olduğunu söyler.
@@ -384,43 +385,49 @@ yalnızca öğelerin görünüşü. Broadsheet stylesheet'i `tasarım/` altında
 kaynakları ona baktığı için diskte duruyor, panel artık yüklemiyor.
 
 ```
-┌──────────────┬───────────────────────────────────────────┐
-│ V Vellum     │  PAZARTESİ 07:40           şimdi tara     │
-│              │                                           │
-│ KÜNYE        │  Günaydın. Gün tek bir işin etrafında     │
-│ ● Posta   4  │  dönüyor: Kayalar sözleşmesi 17:00'de…    │
-│ ● Mesaj   7  │                                           │
-│ ● Ajanda  3  │  ───────────────────────────────────────  │
-│              │  ONAYINIZI BEKLEYEN 2 ŞEY                 │
-│ BUGÜN        │  Ayşe — "Revize takvimi…"  [Onayla][Değiş]│
-│ 11:00 Kayalar│  @marka — kibar ret        [Onayla][Değiş]│
-│ 14:30 Diş    │  ───────────────────────────────────────  │
-│ 18:00 Ekip   │                        siz yazdınız ▸     │
-│              │  kâtibin cevabı…                          │
-│ Vellum 139   │                                           │
-│ kayıt okudu  │  [ Vellum'a yazın…            Söyle ]    │
-│ Defteri aç → │                                           │
-└──────────────┴───────────────────────────────────────────┘
+┌──────────────┬─────────────────────────┬──────────────────┐
+│ V Vellum     │                         │ BUGÜN            │
+│              │          ( ◕ ◕ )        │ Gün tek bir işin │
+│ KÜNYE        │                         │ etrafında dönüyor│
+│ ● Posta   4  │  ┌───────────────────┐  │ tamamını oku     │
+│ ● Mesaj   7  │  │ Kayalar sözleşmesi│  │                  │
+│ ▌ Sesli mod  │  │ bugün 17:00'de.   │  │ TARAMA           │
+│              │  └───────────────────┘  │ [ şimdi tara ]   │
+│ DEFTER       │   Konuşmak için basılı  │                  │
+│ Projeler     │   tutun.                │ ÖNEMLİ MAİLLER   │
+│ Takvim       │                         │ 120 Ayşe — …     │
+│ Konular      │      ( 🎙 )   Geçmiş    │                  │
+│ Sohbet       │                         │ ONAYINIZI        │
+│ Arşiv        │  [ Ya da yazın…  Söyle ]│ BEKLEYEN         │
+│              │                         │ Ayşe — "…"       │
+│ Defteri aç → │                         │ [Onayla][Değiş]  │
+└──────────────┴─────────────────────────┴──────────────────┘
 ```
 
-**Brifing konuşmanın ilk mesajı.** Ayrı bir kutu değil: panel açıldığında bugünün
-`state/log/<tarih>.md` kaydı varsa kâtibin açılış turu olarak görünür. İlk paragraf
-"gün cümlesi" olarak büyük punto, gerisi normal.
+**Ana ekran sesli mod.** Panel açıldığında Vellum karşınızda durur: ortada küre,
+altında söylediğinin yazıldığı balon, mikrofon düğmesi ve yazı kutusu. Yazılı sohbet
+sayfası kaldırıldı — aynı konuşmayı iki ekranda göstermek ikisini de yarım bırakıyordu.
+Geçmiş turlar Defter'in **Sohbet** sekmesinde durur.
 
-**Onaylar akışın içinde.** Taslak metni satırda görünür, tek tıkla onaylanır. Metin
-satıra sığmıyorsa kırpılır; `Değiştir` tam metni dialogda açar. Onay sonucu konuşmaya
-kâtibin cevabı olarak düşer.
+**Brifing sağ şeritte.** Eskiden konuşmanın ilk mesajıydı; o sayfa gidince günün özeti
+sağ kolona taşındı, kırpılmış olarak durur ve "tamamını oku" ile pencerede açılır. Aynı
+şerit taramayı, süren taramanın canlı hâlini, günün eşiği geçen maillerini ve onay
+bekleyen taslakları taşır. Şerit yalnızca bu ekranda görünür.
+
+**Onaylar** taslak metnini satırda gösterir, tek tıkla onaylanır; `Değiştir` tam metni
+dialogda açar.
 
 **Künye** sol kolonda: ajanların sayıları (Posta ve Mesaj, marka renginde rozet),
 bugünün saatleri, ve "Vellum son taramada N kayıt okudu, M'ini size getirdi" cümlesi.
 Ajanlar görünmez ama varlıkları burada duyulur.
 
 **Defter** — gösterge tablosu buraya taşındı. Künyeden veya "Defteri aç" ile girilir,
-"← Konuşmaya dön" ile çıkılır; konuşma durumu kaybolmaz. İçinde: Projeler (canlı özet +
+"← Vellum'a dön" ile çıkılır. İçinde: Projeler (canlı özet +
 12 haftalık aktivite şeridi → tıklayınca serbest zaman çizelgesi, kilometre taşları
-belirgin, onaylanmamış olaylar soluk, etiket süzgeci), Takvim, Posta, Mesaj, Arşiv.
-Bu bölümler sonradan alt şeritten sidebar'a taşındı; Ajanda bölümü ise takvim gelince
-aynı işi iki yerde gösterdiği için kaldırıldı.
+belirgin, onaylanmamış olaylar soluk, etiket süzgeci), Takvim, Konular, Posta, Mesaj,
+Sohbet, Arşiv. Bu bölümler sonradan alt şeritten sidebar'a taşındı. Ajanda bölümü takvim
+gelince aynı işi iki yerde gösterdiği için kaldırıldı; Sohbet ise yazılı sohbet sayfası
+kaldırılınca eklendi — konuşma geçmişi bir yerde durmalı.
 
 **Karanlık tema yok.** Fluent 2'nin nötr rampası koyu yüzeyi mümkün kılar, ama
 uygulanmadı — ayrı bir iş. Tek açık tema kullanılıyor.
@@ -428,7 +435,8 @@ uygulanmadı — ayrı bir iş. Tek açık tema kullanılıyor.
 **Mobil**: 760px altında künye yatay şeride iner, onaylar dikey yığılır, düğmeler 44px.
 
 Dosyalar: `panel/panel.html` (yerleşim ve bileşen kuralları), `panel/panel.js` (çizim
-ve durum), `panel/_ds/fluent2/tokens.css` (tasarım sistemi). Token'lar Broadsheet'ten
+ve durum), `panel/avatar.js` (küre), `panel/ses.js` (mikrofon, oynatma, balon),
+`panel/seslendir.py` (metin → mp3), `panel/_ds/fluent2/tokens.css` (tasarım sistemi). Token'lar Broadsheet'ten
 devralınan adlarla yayımlanıyor, böylece mevcut kurallar dokunmadan yeni değerlere geçti.
 
 ### 10.0 Karar: Claude Code yerine Claude API
@@ -443,7 +451,17 @@ taşındı** (`panel/beyin.py`):
   ve SDK'nın tool runner'ı döngüyü sürer.
 - Yetki sınırı artık kodda: proje kökü dışına çıkılamaz, `secrets/` okunamaz, yazma yalnızca
   `state/`, `projects/`, `config/` altında serbest, `olaylar.jsonl` yalnızca `dosya_ekle` ile
-  büyür. Sohbet salt okunur araçlarla çalışır.
+  büyür.
+- Sohbet (dolayısıyla sesli asistan) bir süre salt okunurdu ve "takvime yazma yetkim yok"
+  diyordu. Artık yazabiliyor — ama serbest dosya yazmayla değil, dört dar araçla:
+  `takvim_ekle`, `takvim_iptal`, `proje_olay_ekle`, `proje_ac`. Bunlar kaydın biçimini
+  garanti eder; model ISO tarihi ya da olay şemasını uydurmak zorunda kalmaz. Serbest
+  `dosya_yaz`/`dosya_ekle` hâlâ yalnızca agent'larda: sohbet brifing dosyalarını ve
+  yapılandırmayı elle değiştiremez. Gönderim yetkisi bunların dışında ve kapalı kalmaya
+  devam ediyor.
+- İstem'e her sohbet çağrısında o anki tarih ve gün eklenir. "Önümüzdeki salı" ancak
+  bugünün ne olduğu biliniyorsa tarihe çevrilebilir; takvime yazan bir asistanın bunu
+  tahmin etmesi kabul edilemez.
 - Model `claude-sonnet-5`, adaptif düşünme açık. Alt agent'lar `effort: medium` ile çalışır;
   Çekirdek harmanlama ve sohbette varsayılan efor kullanılır.
 
@@ -607,3 +625,53 @@ yazılmıyordu — yalnızca tarayıcıya dönüyordu.
 - Panel 20 saniyede bir kendini yoklar. Yazarken, okurken ya da bir işlem beklerken
   yenileme ertelenir; kullanıcının elinden iş alınmaz.
 - Sohbet `state/sohbet.jsonl` içinde saklanır: sayfa yenilenince konuşma kaybolmaz.
+
+---
+
+## 16. Sesli mod (2026-09-11)
+
+Panel yazışmaktan çıkıp konuşmaya geçti. İstek netti: asistan "normal bir chat" değil,
+karşımızda duran, sesli konuşan bir varlık olsun.
+
+**Maliyet kararı: sıfır.** Üç parçanın da ücretsiz karşılığı var ve seçilenler bunlar:
+
+- Konuşma üretimi `edge-tts` ile Microsoft'un Türkçe neural sesinden
+  (`tr-TR-AhmetNeural`). Anahtar istemez, ücret istemez, internet ister. Üretilen mp3
+  `state/ses/<sha1>.mp3` olarak cachelenir — aynı cümle ikinci kez söylenirse ağa hiç
+  gidilmez.
+- Dinleme tarayıcının kendi konuşma tanımasıyla, bas-konuş. Sürekli dinleme yok: hem
+  mahremiyet hem televizyon sesiyle tetiklenme.
+- Sahne kendi çizdiğimiz canvas küresi. Hazır bir 3D sahne (Spline) denendi ve
+  bırakıldı: ücretsiz planı köşeye rozet koyuyor, ağ istiyor ve kürenin verdiğinden
+  fazlasını vermiyordu.
+
+**Claude tarafı ucuzladı.** Sesli cevaplar üç cümleyle sınırlanır; hem kulağa doğru
+gelir hem çıktı token'ı düşer. Yönerge önbelleğe alınan sistem bloğunun ardına ayrı bir
+blok olarak eklenir — sabit öneke karışsaydı her mod değişiminde prompt önbelleği boşa
+düşerdi.
+
+**Küre gerçek sesle oynar.** Çalan ses `AnalyserNode`'dan geçer, ölçülen güç doğrudan
+çizime gider. Kendi kendine sallanan bir animasyon değil.
+
+**Sessizlik hata sayılmaz.** edge-tts kurulu değilse, ağ yoksa ya da servis bir gün
+kapanırsa ses gelmez; balon yazmayı sürdürür. Sesin kaybolması konuşmayı kaybetmekten
+iyidir.
+
+**Sohbetin yazma yetkisi.** Sesli asistan bir süre salt okunurdu ve kullanıcıya "takvime
+yazma yetkim yok" diyordu. Artık yazıyor — ama serbest dosya yazmayla değil, dört dar
+araçla: `takvim_ekle`, `takvim_iptal`, `proje_olay_ekle`, `proje_ac`. Sebep, projenin
+baştan beri tuttuğu ilke: yetki sınırı "şunu yapma" cümlelerine değil araçların kendisine
+gömülür. Dar araç ayrıca kaydın biçimini garanti eder; model ISO tarihi ya da olay
+şemasını uydurmaz. Gönderim yetkisi bunların dışında ve kapalı: mail ve DM yalnızca
+kullanıcının panelden onayladığı taslaklarla gider.
+
+**Yol boyunca çıkan üç hata**, üçü de kendi yazdığımız kodda:
+
+- `ses.js` küreye `window.Avatar` diye bakıyordu; üst seviye `const` `window`'a özellik
+  yazmaz, koşul hep yanlış çıkıp kürenin sese tepkisini sessizce kapatmıştı.
+- Canvas boyunu kabından bir kez ölçüyordu. Balon uzayıp sahne kısalınca eski boyunda
+  kalıp aşağı taşıyor ve altındaki yazı kutusunun tıklamalarını yutuyordu. `ResizeObserver`,
+  `overflow: hidden` ve `pointer-events: none` ile üç yerden kapatıldı.
+- `_durumu_tazele()` hesabı sunucuya yaptırıyor ama sunucunun kendi `KOK`'u var. Testler
+  `beyin.KOK`'u geçici dizine aldığında `durum.json` gerçek `projects/` altına yazıldı ve
+  olmayan proje klasörlerini açtı. Kökler ayrıştığında tazeleme atlanıyor.

@@ -131,14 +131,15 @@ Tarama düğmesi ve günün önemli mailleri sağdaki şeritte durur.
 │ ▌ Sesli mod  │  │ mailin var…       │  │  95 Kayalar — …  │
 │              │  └───────────────────┘  │                  │
 │ DEFTER       │                         │ ONAYINIZI        │
-│ Projeler     │      ( 🎙 )  Yazıya dön │ BEKLEYEN         │
+│ Projeler     │      ( 🎙 )    Geçmiş   │ BEKLEYEN         │
 │ Takvim       │                         │ Ayşe — "…"       │
-│ Konular      │  [ Ya da yazın…  Söyle ]│ [Onayla][Değiş]  │
+│ Sohbet       │  [ Ya da yazın…  Söyle ]│ [Onayla][Değiş]  │
 └──────────────┴─────────────────────────┴──────────────────┘
 ```
 
-Yazılı akış "Yazıya dön" ile açılır. Orada brifing ayrı bir kutu olarak değil, günün
-ilk mesajı olarak gelir; onaylar sohbetin içinde satır satır verilir.
+Tek ana ekran budur. Ayrı bir yazılı sohbet sayfası yoktur — aynı konuşmayı iki ekranda
+göstermek ikisini de yarım bırakıyordu. Geçmiş turlar Defter'in **Sohbet** sekmesinde
+durur, günün brifingi sağ şeritte.
 
 ```
 ┌──────────────┬────────────────────────────────────┐
@@ -179,13 +180,17 @@ yol da aynı akışa girer, cevap iki durumda da sesli gelir.
   bir daha söylenirse ağa çıkılmaz.
 - **Küre** sesin şiddetiyle oynar: çalan ses `AnalyserNode`'dan geçer, ölçülen güç
   doğrudan çizime gider. Ağzı yoktur, dudak senkronu da yoktur.
-- **Kayıt** değişmez: sesli turlar da `state/sohbet.jsonl`'e yazılır, yazılı moda
-  dönünce konuşma orada durur.
+- **Kayıt** `state/sohbet.jsonl`'e düşer; geçmiş Defter'in Sohbet sekmesinde okunur.
 - **Sağ şerit** yalnızca bu ekranda: tarama düğmesi, süren taramanın canlı hâli,
   günün eşiği geçen mailleri ve onay bekleyen taslaklar. Yazılı akışta bunlar zaten
   konuşmanın içinde olduğu için orada tekrarlanmaz.
-- Sesli modda cevaplar üç cümleyle sınırlanır. Hem kulağa doğru gelir hem de çıktı
-  token'ı azaldığı için **yazılı moddan ucuza** gelir.
+- Cevaplar üç cümleyle sınırlanır. Hem kulağa doğru gelir hem de çıktı token'ı azaldığı
+  için **eski yazılı sohbetten ucuza** gelir.
+- **Takvime ve projeye yazabilir.** "Ayşe ile salı 14:00'te görüşmem var" dediğinizde
+  takvime kendisi yazar. Dört dar aracı var — `takvim_ekle`, `takvim_iptal`,
+  `proje_olay_ekle`, `proje_ac` — serbest dosya yazması yoktur; brifing dosyalarını ve
+  yapılandırmayı değiştiremez. Mail ve mesaj **gönderemez**: gönderim yalnızca panelden
+  onayladığınız taslaklarla olur.
 
 Ses üretilemezse (ağ yok, servis kapalı) balon yazmayı sürdürür: sessizlik hata
 sayılmaz, konuşmayı kaybetmekten iyidir.
@@ -297,8 +302,9 @@ python scripts/seed_ornek_veri.py
 │   ├── seslendir.py       metin → mp3 (edge-tts), diske cacheler
 │   ├── panel.html         arayüz yerleşimi
 │   ├── panel.js
-│   ├── avatar.js          sesli moddaki küre
+│   ├── avatar.js          sesli moddaki küre (canvas)
 │   ├── ses.js             mikrofon, oynatma, konuşma balonu
+│   ├── takvim.py          etkinlik deposu (append-only)
 │   └── _ds/fluent2/      tasarım sistemi (Fluent 2 token'ları)
 └── scripts/
     ├── gmail_fetch.py      Gmail → state/raw/gmail.json (IMAP, salt okuma)
@@ -306,6 +312,9 @@ python scripts/seed_ornek_veri.py
     ├── izleyici.py         canlı izleyici: yeni maili yakalar, bildirir
     ├── kart.py             Fluent bildirim kartı (masaüstü pop-up)
     ├── test_skorlama.py    kural motorunun birim testleri
+    ├── test_takvim.py      takvim deposu ve hatırlatmalar
+    ├── test_seslendir.py   metin temizleme ve ses cache'i
+    ├── test_sohbet_araclari.py  sohbetin yazma araçları
     └── seed_*.py           demo verisi
 ```
 

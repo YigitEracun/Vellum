@@ -15,11 +15,13 @@ import json
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 
 import anthropic
 from anthropic import beta_tool
 
 KOK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TZ = timezone(timedelta(hours=3))
 
 MODEL = "claude-sonnet-5"
 # Alt agent'lar sınırlı bir işi yapıyor; Çekirdek harmanlama ve sohbette
@@ -245,8 +247,187 @@ def dosya_ekle(yol: str, satir: str) -> str:
     return "eklendi: " + yol
 
 
+# ------------------------------------------------- sohbetin yazma araclari
+#
+# Sohbet uzun süre salt okunurdu: "takvime yazma yetkim yok" diyordu. Artık
+# yazabiliyor ama serbest dosya yazmayla değil, işi bilen dar araçlarla.
+# Sebep, projenin baştan beri tuttuğu ilke: yetki sınırı "şunu yapma"
+# cümlelerine değil araçların kendisine gömülür. Bu araçlar kaydın biçimini
+# garanti eder — model ISO tarihi ya da olay şemasını uydurmak zorunda kalmaz.
+
+TIPLER = ("not", "adim_tamamlandi", "blokaj", "blokaj_cozuldu", "teslim",
+          "karar", "kilometre_tasi")
+
+
+def _takvim():
+    import takvim
+    return takvim
+
+
+@beta_tool
+def takvim_ekle(baslik: str, baslangic: str, tur: str = "diger",
+                yer: str = "", saatli: bool = True) -> str:
+    """Takvime yeni bir etkinlik yazar.
+
+    Args:
+        baslik: Etkinliğin adı, örn. "Ayşe ile görüşme".
+        baslangic: ISO8601 başlangıç, örn. "2026-09-15T14:00:00+03:00".
+            Saat bilinmiyorsa günün tarihini ver ve saatli=False geç.
+        tur: mulakat | toplanti | gorusme | son_tarih | diger.
+        yer: Varsa yer ya da bağlantı.
+        saatli: Saati belli mi. False ise gün boyu sayılır.
+    """
+    try:
+        kayit = _takvim().ekle(baslik, baslangic, saatli=saatli,
+                               yer=yer or None, tur=tur, kaynak="sohbet")
+    except ValueError as e:
+        return "HATA: %s" % e
+    except Exception as e:
+        return "HATA: takvime yazilamadi: %s" % e
+    return "takvime eklendi: %s — %s (id: %s)" % (
+        kayit["baslik"], kayit["baslangic"], kayit["id"])
+
+
+@beta_tool
+def takvim_iptal(kimlik: str) -> str:
+    """Takvimdeki bir etkinliği kaldırır.
+
+    Özgün kayıt silinmez, üstüne iptal satırı yazılır.
+
+    Args:
+        kimlik: Etkinliğin id'si, örn. "evt_1a2b3c4d".
+    """
+    try:
+        oldu = _takvim().iptal_et(kimlik)
+    except Exception as e:
+        return "HATA: %s" % e
+    return "iptal edildi: " + kimlik if oldu else "HATA: boyle bir etkinlik yok: " + kimlik
+
+
+@beta_tool
+def proje_olay_ekle(proje: str, baslik: str, tip: str = "not",
+                    detay: str = "", etiket: str = "",
+                    kilometre_tasi: bool = False) -> str:
+    """Bir projenin olay günlüğüne kayıt düşer.
+
+    Günlük append-only: yazılan satır sonradan değişmez, düzeltme yeni satırdır.
+
+    Args:
+        proje: Klasör adı, örn. "kayalar-sozlesmesi". projects/ altında olmalı.
+        baslik: Tek cümlelik olay, örn. "Ayşe fiyat revizesi istedi".
+        tip: not | adim_tamamlandi | blokaj | blokaj_cozuldu | teslim | karar |
+            kilometre_tasi.
+        detay: Gerekiyorsa birkaç cümle açıklama.
+        etiket: Virgülle ayrılmış etiketler, örn. "fiyat,sozlesme".
+        kilometre_tasi: Zaman çizelgesinde belirgin dursun mu.
+    """
+    ad = os.path.basename((proje or "").strip())
+    if not ad:
+        return "HATA: proje adi bos."
+    klasor = os.path.join(KOK, "projects", ad)
+    if not os.path.isdir(klasor):
+        return ("HATA: '%s' diye bir proje yok. Var olanlar: %s. Yeni proje "
+                "acmak icin proje_ac kullan." % (ad, _projeler() or "(hic yok)"))
+    if tip not in TIPLER:
+        return "HATA: gecersiz tip. Secenekler: " + ", ".join(TIPLER)
+    baslik = (baslik or "").strip()
+    if not baslik:
+        return "HATA: olayin basligi olmali."
+
+    olay = {
+        "t": datetime.now(TZ).isoformat(),
+        "tip": tip,
+        "baslik": baslik,
+        "detay": (detay or "").strip(),
+        "kaynak": "sohbet",
+        "etiket": [e.strip() for e in (etiket or "").split(",") if e.strip()],
+        "kilometre_tasi": bool(kilometre_tasi),
+        # Kullanıcı konuşurken kendisi söyledi; agent çıkarımı değil, onay
+        # beklemesine gerek yok.
+        "onaylanmamis": False,
+        "ref": None,
+    }
+    with io.open(os.path.join(klasor, "olaylar.jsonl"), "a", encoding="utf-8") as f:
+        f.write(json.dumps(olay, ensure_ascii=False) + "\n")
+    _durumu_tazele(ad)
+    return "olay eklendi: %s / %s" % (ad, baslik)
+
+
+@beta_tool
+def proje_ac(ad: str, ozet: str = "") -> str:
+    """projects/ altına yeni bir proje açar.
+
+    Yalnızca kullanıcı istediğinde kullanılır — kendiliğinden proje uydurma.
+
+    Args:
+        ad: Klasör adı: küçük harf, boşluk yerine tire, örn. "kayalar-sozlesmesi".
+        ozet: Projenin ne olduğu, bir iki cümle.
+    """
+    temiz = _slug(ad)
+    if not temiz:
+        return "HATA: gecerli bir proje adi ver (kucuk harf ve tire)."
+    klasor = os.path.join(KOK, "projects", temiz)
+    if os.path.isdir(klasor):
+        return "zaten var: " + temiz
+    os.makedirs(klasor)
+    io.open(os.path.join(klasor, "proje.md"), "w", encoding="utf-8").write(
+        "# %s\n\n%s\n" % (temiz, (ozet or "").strip()))
+    io.open(os.path.join(klasor, "durum.json"), "w", encoding="utf-8").write(
+        json.dumps({"ozet": (ozet or "").strip()}, ensure_ascii=False, indent=2) + "\n")
+    io.open(os.path.join(klasor, "olaylar.jsonl"), "w", encoding="utf-8").write("")
+    return "proje acildi: " + temiz
+
+
+# Türkçe harfler klasör adında sorun çıkarır ama atılamazlar: "Görüşmesi"nden
+# ö ve ü silinince geriye "grmesi" kalıyordu. Karşılıklarına çevriliyorlar.
+_HARFLER = {"ı": "i", "İ": "i", "ş": "s", "Ş": "s", "ğ": "g", "Ğ": "g",
+            "ü": "u", "Ü": "u", "ö": "o", "Ö": "o", "ç": "c", "Ç": "c"}
+
+
+def _slug(ad):
+    t = "".join(_HARFLER.get(h, h) for h in (ad or "").strip())
+    t = re.sub(r"[\s_]+", "-", t.lower())
+    t = re.sub(r"[^a-z0-9-]", "", t)
+    return re.sub(r"-{2,}", "-", t).strip("-")
+
+
+def _projeler():
+    kok_p = os.path.join(KOK, "projects")
+    if not os.path.isdir(kok_p):
+        return ""
+    return ", ".join(a for a in sorted(os.listdir(kok_p))
+                     if not a.startswith("_")
+                     and os.path.isdir(os.path.join(kok_p, a)))
+
+
+def _durumu_tazele(proje):
+    """durum.json'un mekanik alanlarını yeniden hesaplar.
+
+    Hesap sunucuda duruyor; burada çoğaltmak iki yerde ayrı ayrı bozulacak
+    demekti. Tazeleme başarısız olursa olay yine de yazılmıştır — panel bir
+    sonraki onayda ya da taramada toparlar.
+
+    Sunucunun kendi KOK'u var ve yolları ona göre çözüyor. İki kök ayrıştığında
+    (testler beyin.KOK'u geçici dizine alır) hesap yanlış yere yazar — hatta
+    olmayan proje klasörlerini açar. O yüzden kökler aynı değilse dokunulmaz.
+    """
+    try:
+        import sunucu
+        if os.path.abspath(sunucu.KOK) != os.path.abspath(KOK):
+            return
+        durum = sunucu.oku_json("projects/%s/durum.json" % proje, {}) or {}
+        sunucu.yaz_json("projects/%s/durum.json" % proje,
+                        sunucu.turet_durum(proje, durum))
+    except Exception:
+        pass
+
+
 OKUMA_ARACLARI = [dosya_oku, dosya_listele, ek_oku]
 YAZMA_ARACLARI = [dosya_oku, dosya_listele, ek_oku, dosya_yaz, dosya_ekle]
+# Sohbet okur, takvime yazar ve projeye not düşer — ama serbest dosya yazma
+# hâlâ yok: brifing dosyalarını ve yapılandırmayı elle değiştiremez.
+SOHBET_ARACLARI = OKUMA_ARACLARI + [takvim_ekle, takvim_iptal,
+                                    proje_olay_ekle, proje_ac]
 
 
 # ------------------------------------------------------------------- calistir
@@ -338,7 +519,16 @@ def cekirdek_sistemi():
         "Dosyalara dosya_oku/dosya_listele araçlarıyla erişirsin. Yollar proje "
         "köküne göredir. Mail eklerini ek_oku aracıyla okursun — bir mailde ek "
         "varsa ve içeriği soruya konu oluyorsa, tahmin yürütmeden önce eki aç. "
-        "Bilmediğin bir şeyi uydurma; önce ilgili dosyayı oku."
+        "Bilmediğin bir şeyi uydurma; önce ilgili dosyayı oku.\n\n"
+        "Takvime ve proje günlüğüne yazabilirsin: takvim_ekle, takvim_iptal, "
+        "proje_olay_ekle, proje_ac. Kullanıcı bir görüşme, toplantı ya da son "
+        "tarih söylediğinde 'yetkim yok' deme — takvim_ekle ile yaz, sonra ne "
+        "yazdığını tek cümleyle söyle. Tarihi kendin ISO8601'e çevir; saat "
+        "belirtilmediyse saatli=False geç. Proje günlüğüne not düşerken önce "
+        "dosya_listele ile projects/ altına bak; uygun proje yoksa kullanıcıya "
+        "yeni proje açmayı öner, onay verirse proje_ac kullan — kendiliğinden "
+        "proje uydurma. Mail ve mesaj GÖNDERMEK bu araçların dışındadır: "
+        "gönderim yalnızca kullanıcının panelden onayladığı taslaklarla olur."
     )
     return "\n\n---\n\n".join(parcalar)
 
@@ -371,7 +561,7 @@ SESLI_YONERGE = (
 
 
 def sohbet(soru, gecmis=None, ses=False):
-    """Panelden gelen soruyu Çekirdek'e iletir (salt okunur araçlarla).
+    """Panelden gelen soruyu Çekirdek'e iletir.
 
     `gecmis`: [{"rol": "kullanici"|"asistan", "metin": "..."}] listesi.
     Rolleri sıraya sokar; API user/assistant dönüşümlü olmasını şart koşar.
@@ -399,8 +589,20 @@ def sohbet(soru, gecmis=None, ses=False):
     else:
         mesajlar.append({"role": "user", "content": soru})
 
-    return calistir(cekirdek_sistemi(), mesajlar, OKUMA_ARACLARI,
-                    ek_sistem=SESLI_YONERGE if ses else None)
+    # "Önümüzdeki salı" ancak bugünün ne olduğu biliniyorsa tarihe çevrilebilir;
+    # takvime yazan bir asistanın bunu tahmin etmesi kabul edilemez.
+    simdi = datetime.now(TZ)
+    ekler = ["Şu an: %s (%s)." % (simdi.isoformat(timespec="minutes"),
+                                 GUNLER[simdi.weekday()])]
+    if ses:
+        ekler.append(SESLI_YONERGE)
+
+    return calistir(cekirdek_sistemi(), mesajlar, SOHBET_ARACLARI,
+                    ek_sistem="\n\n".join(ekler))
+
+
+GUNLER = ("Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma",
+          "Cumartesi", "Pazar")
 
 
 ESIK = 40   # ham skor: bunun altındaki mail modele hiç gösterilmez

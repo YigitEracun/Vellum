@@ -7,10 +7,11 @@ const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz',
 const GUNLER = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
 let D = null;                 // /api/durum çıktısı
-// Ana ekran sesli mod: panel açıldığında Vellum karşınızda durur, yazılı akış
-// "Yazıya dön" ile açılır.
-let gorunum = 'ses';          // 'ses' | 'konusma' | 'defter'
-let defterOdak = 'projeler';  // 'projeler' | 'takvim' | 'konular' | 'posta' | 'mesaj' | 'arsiv'
+// Tek ana ekran var: sesli mod. Yazılı sohbet sayfası kaldırıldı — aynı
+// konuşmayı iki yerde göstermek ikisini de yarım bırakıyordu. Geçmiş turlar
+// Defter'in Sohbet sekmesinde duruyor.
+let gorunum = 'ses';          // 'ses' | 'defter'
+let defterOdak = 'projeler';  // 'projeler' | 'takvim' | 'konular' | 'posta' | 'mesaj' | 'sohbet' | 'arsiv'
 let acikProje = null;
 let etiketSuzgeci = null;
 let sohbetGecmisi = [];
@@ -169,6 +170,7 @@ function cizKunye() {
     ajanSatiri('takvim', null, 'Takvim', bekleyenEtkinlik) +
     ajanSatiri('konular', null, 'Konular',
       ((D.konular && D.konular.kendi) || []).length) +
+    ajanSatiri('sohbet', null, 'Sohbet', sohbetGecmisi.length) +
     ajanSatiri('arsiv', null, 'Arşiv', (D.arsiv || []).length) +
     '</div></div>';
 
@@ -191,7 +193,7 @@ function cizKunye() {
   s += '<div class="kunye-alt">Vellum son taramada ' + okunan + ' kayıt okudu, ' +
     getirilen + '’ini size getirdi.' +
     (gorunum === 'defter'
-      ? '<button class="geri defter" onclick="konusmayaDon()">← Konuşmaya dön</button>'
+      ? '<button class="geri defter" onclick="sesliModaGec()">← Vellum’a dön</button>'
       : '<button class="geri defter" onclick="defterAc(\'projeler\')">Defteri aç →</button>') +
     '</div>';
 
@@ -206,59 +208,6 @@ function ajanSatiri(hedef, nokta, ad, sayi) {
     '" onclick="defterAc(\'' + hedef + '\')">' +
     '<span class="nokta ' + (nokta || 'n-yok') + '"></span>' + ad +
     '<span class="sayi">' + sayi + '</span></button>';
-}
-
-// ---------------------------------------------------------------- konuşma
-
-function cizKonusma() {
-  const simdi = new Date(D.simdi);
-  const selam = simdi.getHours() < 11 ? 'Günaydın'
-    : simdi.getHours() < 18 ? 'Merhaba' : 'İyi akşamlar';
-
-  let s = '<div class="akis">';
-  s += '<div class="zaman-etiketi"><span>' + GUNLER[simdi.getDay()] + ' ' + saat(D.simdi) +
-    '</span><button class="geri" onclick="tara()"' + (taraniyor ? ' disabled' : '') + '>' +
-    (taraniyor ? 'taranıyor…' : 'şimdi tara') + '</button></div>';
-
-  if (hataMetni) { s += '<div class="hata">' + kacir(hataMetni) + '</div>'; hataMetni = null; }
-
-  // Günün cümlesi: brifing varsa konuşmanın açılışı olur.
-  s += taramaCiz();
-  s += bildirimleriCiz();
-
-  if (D.bugunun_brifingi) {
-    s += brifingDamgasi() + brifingiCiz(D.bugunun_brifingi);
-  } else {
-    s += '<p class="gun-cumlesi">' + selam + '. Bugün için henüz tarama yapılmadı.</p>' +
-      '<p class="ses">Postayı, mesajları ve takvimi taramamı istersen yukarıdaki ' +
-      '“şimdi tara”ya bas — dört ajan çalışır, günün özetini buraya yazarım.</p>';
-  }
-
-  s += onaylariCiz();
-
-  sohbetGecmisi.forEach(t => {
-    s += t.rol === 'kullanici'
-      ? '<p class="ben">' + kacir(t.metin) + '</p>'
-      : '<p class="ses">' + kacir(t.metin) + '</p>';
-  });
-  if (bekleyen) {
-    s += '<p class="ses dusunuyor">Düşünüyor… ' + gecenSaniye + ' sn</p>';
-  }
-
-  s += '</div>';
-
-  s += '<div class="besteci"><div class="besteci-ic">' +
-    '<input type="text" id="soru" placeholder="Vellum’a yazın…"' +
-    (bekleyen ? ' disabled' : '') + ' onkeydown="if(event.key===\'Enter\')sor()">' +
-    '<button class="btn btn-primary" onclick="sor()"' + (bekleyen ? ' disabled' : '') +
-    '>Söyle</button></div>';
-  if (!D.canli_gonderim) {
-    s += '<p class="kapali-not">Canlı gönderim kapalı — onaylar yalnızca kaydediliyor, ' +
-      'hiçbir yere mail veya mesaj gitmiyor.</p>';
-  }
-  s += '</div>';
-
-  return s;
 }
 
 // Canlı izleyicinin gün içinde yakaladığı mailler. Kural motoru puanladı, model
@@ -384,7 +333,7 @@ function onaylariCiz() {
 function cizDefter() {
   let s = '<div class="akis"><div class="defter-ust">' +
     '<h1>' + kacir(defterBasligi()) + '</h1>' +
-    '<button class="geri" onclick="konusmayaDon()">← Konuşmaya dön</button></div>';
+    '<button class="geri" onclick="sesliModaGec()">← Vellum’a dön</button></div>';
 
   if (hataMetni) { s += '<div class="hata">' + kacir(hataMetni) + '</div>'; hataMetni = null; }
 
@@ -394,6 +343,7 @@ function cizDefter() {
   else if (defterOdak === 'mesaj') s += defterMesaj();
   else if (defterOdak === 'takvim') s += defterTakvim();
   else if (defterOdak === 'konular') s += defterKonular();
+  else if (defterOdak === 'sohbet') s += defterSohbet();
 
   // Gezinme künyeye taşındı; alttaki etiket şeridi kaldırıldı.
   return s + '</div>';
@@ -401,7 +351,7 @@ function cizDefter() {
 
 function defterBasligi(hangi) {
   const ad = { projeler: 'Projeler', takvim: 'Takvim', konular: 'Konular',
-    arsiv: 'Arşiv', posta: 'Posta', mesaj: 'Mesaj' };
+    arsiv: 'Arşiv', posta: 'Posta', mesaj: 'Mesaj', sohbet: 'Sohbet' };
   return ad[hangi || defterOdak] || 'Defter';
 }
 
@@ -839,6 +789,22 @@ async function etkinlikKaldir(id) {
   await yenile();
 }
 
+// Konuşma geçmişi. Sesli ekranda balon yalnızca son turu gösterir; "dün ne
+// konuşmuştuk" sorusunun cevabı burada durur. Kayıt zaten sunucuda tutuluyor
+// (state/sohbet.jsonl), bu sayfa onu okur.
+function defterSohbet() {
+  if (!sohbetGecmisi.length) {
+    return '<p class="bos">Henüz konuşma yok. Sesli moddan bir şey sorun.</p>';
+  }
+  let s = '<div class="akis">';
+  sohbetGecmisi.forEach(t => {
+    s += t.rol === 'kullanici'
+      ? '<p class="ben">' + kacir(t.metin) + '</p>'
+      : '<p class="ses">' + kacir(t.metin) + '</p>';
+  });
+  return s + '</div>';
+}
+
 function defterArsiv() {
   const a = D.arsiv || [];
   if (!a.length) return '<p class="bos">Arşivde kayıt yok.</p>';
@@ -891,42 +857,6 @@ async function arsivAc(ad) {
     '<div class="dialog-actions"><button class="btn btn-secondary" onclick="modalKapat()">Kapat</button></div>');
 }
 
-async function sor() {
-  const kutu = document.getElementById('soru');
-  if (!kutu || bekleyen) return;
-  const soru = kutu.value.trim();
-  if (!soru) return;
-
-  const gecmis = sohbetGecmisi.slice();
-  sohbetGecmisi.push({ rol: 'kullanici', metin: soru });
-  bekleyen = true;
-  gecenSaniye = 0;
-  ciz();
-  odaklan(true);   // kullanıcı mesaj gönderdi: konuşmayı takip et
-
-  // Tüm paneli saniyede bir çizmek titremeye yol açıyor; yalnız bu düğüm güncellenir.
-  const sayac = setInterval(() => {
-    gecenSaniye += 1;
-    const d = document.querySelector('.dusunuyor');
-    if (d) d.textContent = 'Düşünüyor… ' + gecenSaniye + ' sn';
-  }, 1000);
-
-  let r;
-  try {
-    r = await cagir('/api/sohbet', { soru: soru, gecmis: gecmis });
-  } catch (e) {
-    r = { hata: 'Sunucuya ulaşılamadı: ' + e.message };
-  }
-  clearInterval(sayac);
-  bekleyen = false;
-  sohbetGecmisi.push({
-    rol: 'asistan',
-    metin: r.cevap || ('Olmadı: ' + (r.hata || 'bilinmeyen hata'))
-  });
-  ciz();
-  odaklan(true);   // cevap geldi: yeni mesaja in
-}
-
 async function tara() {
   if (taraniyor) return;
   taraniyor = true;
@@ -938,28 +868,6 @@ async function tara() {
   nabziDurdur();
   if (r.hata) hataMetni = r.hata;
   await yenile();
-}
-
-// Kullanıcı en altta mı duruyor? Geçmişi okumak için yukarı çıkmışsa onu
-// aşağı sürüklemeyiz; konuşmayı takip ediyorsa yeni mesaja iniriz.
-const DIP_PAYI = 120;   // piksel
-function dipteMi() {
-  const kalan = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
-  return kalan <= DIP_PAYI;
-}
-
-function dibeKay(zorla) {
-  if (!zorla && !dipteMi()) return;
-  // Çizim bittikten sonra yüksekliğin oturması için bir kare bekle.
-  requestAnimationFrame(() => {
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
-  });
-}
-
-function odaklan(dipYap) {
-  const kutu = document.getElementById('soru');
-  if (kutu && !bekleyen) kutu.focus();
-  dibeKay(dipYap);
 }
 
 // -------------------------------------------------------------------- kabuk
@@ -974,12 +882,6 @@ function defterAc(hangi) {
   window.scrollTo(0, 0);
 }
 
-function konusmayaDon() {
-  gorunum = 'konusma';
-  sesliModdanCik();
-  ciz();
-  odaklan();
-}
 function projeAc(ad) { acikProje = acikProje === ad ? null : ad; etiketSuzgeci = null; ciz(); }
 function suz(e) { etiketSuzgeci = e; ciz(); }
 
@@ -991,8 +893,7 @@ function ciz() {
   document.getElementById('ses-yan').hidden = !sesli;
   document.querySelector('.tabaka').classList.toggle('uc-kolon', sesli);
   if (sesli) { sahneHazirla(); cizSesYan(); return cizSes(); }
-  document.getElementById('sutun').innerHTML =
-    gorunum === 'defter' ? cizDefter() : cizKonusma();
+  document.getElementById('sutun').innerHTML = cizDefter();
 }
 
 // ------------------------------------------------------------------ sesli mod
@@ -1041,7 +942,7 @@ function cizSes() {
     ' onmouseleave="Ses.dinlemeyiBitir()"' +
     ' ontouchstart="event.preventDefault();Ses.dinlemeyeBasla()"' +
     ' ontouchend="Ses.dinlemeyiBitir()">🎙</button>' +
-    '<button class="btn" onclick="konusmayaDon()">Yazıya dön</button>' +
+    '<button class="btn" onclick="defterAc(\'sohbet\')">Geçmiş</button>' +
     '</div>';
 
   // Konuşamayacağınız yerde de sorulabilsin: aynı akış, elle yazılmış soru.
@@ -1077,7 +978,22 @@ function sesliSor() {
 // Sağ şerit: tarama ve günün önemli mailleri. Yalnızca sesli modda çizilir —
 // konuşma ekranında bunlar akışın içinde zaten var.
 function cizSesYan() {
-  let s = '<div class="yan-baslik">Tarama</div>';
+  let s = '';
+  if (hataMetni) { s += '<div class="hata">' + kacir(hataMetni) + '</div>'; hataMetni = null; }
+
+  // Brifing eskiden konuşma sayfasının açılışıydı; o sayfa kaldırıldı, günün
+  // özeti buraya taşındı. Uzunsa kırpılır, tamamı pencerede açılır.
+  s += '<div class="yan-baslik">Bugün</div>';
+  if (D.bugunun_brifingi) {
+    s += brifingDamgasi() +
+      '<p class="yan-brifing">' + kacir(kirp(D.bugunun_brifingi
+        .replace(/^#+\s*/gm, '').replace(/\*\*/g, ''), 320)) + '</p>' +
+      '<div><button class="baglanti" onclick="brifingiAc()">tamamını oku</button></div>';
+  } else {
+    s += '<p class="yan-bos">Bugün için henüz tarama yapılmadı.</p>';
+  }
+
+  s += '<div class="yan-baslik">Tarama</div>';
   s += '<div><button class="btn btn-primary" onclick="tara()"' +
     (taraniyor ? ' disabled' : '') + '>' +
     (taraniyor ? 'taranıyor…' : 'şimdi tara') + '</button></div>';
@@ -1092,6 +1008,16 @@ function cizSesYan() {
   if (onaylar) s += '<div class="yan-baslik">Onayınızı bekleyen</div>' + onaylar;
 
   document.getElementById('ses-yan').innerHTML = s;
+}
+
+function brifingiAc() {
+  modalAc('<h2>' + kacir(brifingDamgasiMetni()) + '</h2><pre>' +
+    kacir(D.bugunun_brifingi || '') + '</pre>' +
+    '<div class="dialog-actions"><button class="btn" onclick="modalKapat()">Kapat</button></div>');
+}
+
+function brifingDamgasiMetni() {
+  return D.brifing_zamani ? saat(D.brifing_zamani) + ' brifingi' : 'Bugünün brifingi';
 }
 
 // Onay satırında taslak metnini gösterebilmek için gövdelerini önden okur.
@@ -1123,7 +1049,6 @@ async function yenile() {
   ciz();
   await taslaklariGetir();
   ciz();
-  odaklan();
   // Bu sekme taramayı başlatmamış olsa da (başka sekme, sayfa yenilendi)
   // süren bir tarama varsa takibe al.
   if (D && D.tarama && D.tarama.suruyor) nabziBaslat();
@@ -1162,8 +1087,6 @@ function yenilemeUygunMu() {
   if (document.hidden) return false;
   const ortu = document.getElementById('ortu');
   if (ortu && !ortu.hidden) return false;            // açık pencere kapanmasın
-  const kutu = document.getElementById('soru');
-  if (kutu && (kutu.value.trim() || document.activeElement === kutu)) return false;
   const sesKutu = document.getElementById('ses-soru');
   if (sesKutu && (sesKutu.value.trim() || document.activeElement === sesKutu)) return false;
   // Sesli modda konuşma sürerken çizim balonu tazeler; ses kesilmez ama
